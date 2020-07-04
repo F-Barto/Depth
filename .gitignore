@@ -136,3 +136,10 @@ wandb.key
 
 #notebooks dir
 notebooks/
+
+#weight dir
+weights/
+
+# OAR log file
+
+**/OAR.*
