@@ -1,0 +1,7 @@
+includes:
+  - self_supervised.yml
+
+losses:
+  supervised_loss_weight: 1e-4
+  SupervisedLoss:
+    num_scales: 4        # Number of scales for supervised learning

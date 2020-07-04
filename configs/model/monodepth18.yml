@@ -1,0 +1,10 @@
+model:
+  tri_checkpoint_path: ???
+  depth_net:
+    name: monodepth
+    options:
+      num_layers: 18      # choices=[18, 34, 50, 101, 152]
+  pose_net:
+    name: monodepth
+    options:
+      num_layers: 18

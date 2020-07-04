@@ -1,0 +1,10 @@
+includes:
+  - monodepth18.yml
+
+model:
+  depth_net:
+    options:
+      num_layers: 50      # choices=[18, 34, 50, 101, 152]
+  pose_net:
+    options:
+      num_layers: 50
