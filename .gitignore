@@ -142,4 +142,8 @@ weights/
 
 # OAR log file
 
+<<<<<<< HEAD
 OAR.*
+=======
+**/OAR.*
+>>>>>>> 832da2d71f49f8139d00401251908e636566ca07
