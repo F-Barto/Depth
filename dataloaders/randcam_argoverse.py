@@ -1,6 +1,6 @@
 """
 This module implements a Dataloader suitable for the self-supervisied training of a monocular depth estimation method on
-the Argoverse Tracking dataset (please cite their work and our work if you use it).
+the argoverse Tracking dataset (please cite their work and our work if you use it).
 
 assumes that the argoverse API is installed
 
@@ -24,7 +24,7 @@ VEHICLE_CALIBRATION_INFO_FILENAME = 'vehicle_calibration_info.json'
 
 class RandCamSequentialArgoverseLoader(Dataset):
     """
-    Argoverse Tracking Dataloader that loads:
+    argoverse Tracking Dataloader that loads:
         - the image at time t (the target view)
         - the neighbouring images, e.g., at time t-1 and t+1 (the source views)
         - the depth image from the LiDAR 3D data
@@ -49,7 +49,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
         Parameters
         ----------
         argoverse_tracking_root_dir : str
-            The path to the root of the Argoverse tracking dataset,
+            The path to the root of the argoverse tracking dataset,
             e.g., /home/clear/fbartocc/data/ARGOVERSE/argoverse-tracking
         split_name : str
             either 'train', 'val' or 'test'
@@ -110,7 +110,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
             self.samples_paths = split_data['samples_paths']
             self.translation_magnitudes = split_data.get('translation_magnitudes', None)
         else:
-            from data_preparation.Argoverse.data_synchronization import collect_cam_configs_and_sync_data
+            from data_preparation.argoverse.data_synchronization import collect_cam_configs_and_sync_data
             self.split_name = split_name
             self.camera_list = camera_list
 

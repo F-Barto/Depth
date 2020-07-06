@@ -1,5 +1,5 @@
 """
-Conveniant script to produce lidar-projected images from Argoverse tracking dataset
+Conveniant script to produce lidar-projected images from argoverse tracking dataset
 
 Assumes that argoverse-api is installed: https://github.com/argoai/argoverse-api
 """
