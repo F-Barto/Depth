@@ -9,8 +9,6 @@ from tqdm import tqdm
 from argoverse.utils.calibration import RING_CAMERA_LIST, get_calibration_config
 from argoverse.data_loading.synchronization_database import SynchronizationDB
 
-from common import validate_camera_option
-
 VEHICLE_CALIBRATION_INFO_FILENAME = 'vehicle_calibration_info.json'
 ARGO_SPLIT_NAMES = ['train1', 'train2', 'train3', 'train4', 'val', 'test']
 
@@ -263,8 +261,6 @@ def collect_cam_configs_and_sync_data(argoverse_tracking_root_dir, camera_list, 
     argoverse_tracking_root_dir = argoverse_tracking_root_dir
 
     assert split_name in ARGO_SPLIT_NAMES
-
-    camera_list = validate_camera_option(camera_list)
 
     split_dir = argoverse_tracking_root_dir / split_name
     assert split_dir.exists(), split_dir
