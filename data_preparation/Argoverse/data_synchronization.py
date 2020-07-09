@@ -4,13 +4,13 @@ from pathlib import Path
 import json
 import click
 import pickle
+from tqdm import tqdm
 
-from argoverse.utils.calibration import CAMERA_LIST, get_calibration_config
+from argoverse.utils.calibration import RING_CAMERA_LIST, get_calibration_config
 from argoverse.data_loading.synchronization_database import SynchronizationDB
 
-from .common import validate_camera_option
-
 VEHICLE_CALIBRATION_INFO_FILENAME = 'vehicle_calibration_info.json'
+ARGO_SPLIT_NAMES = ['train1', 'train2', 'train3', 'train4', 'val', 'test']
 
 logger = getLogger()
 
@@ -26,7 +26,7 @@ def load_camera_config(calib_filepath, camera_list):
         The path to the calibration .json file
 
     camera_list: list
-        list of camera for which to load the parameters. Must be in Argoverse's CAMERA_LIST
+        list of camera for which to load the parameters. Must be in argoverse's CAMERA_LIST
 
     Returns
     -------
@@ -46,7 +46,7 @@ def load_camera_config(calib_filepath, camera_list):
     for camera in camera_list:
         cam_config = get_calibration_config(calib, camera)
         configs[camera] = cam_config
-    return configs
+    return configs, calib
 
 def get_split_cam_configs_and_sync_data(argoverse_tracking_root_dir, split_dir, camera_list, source_views_indexes):
     """
@@ -58,7 +58,7 @@ def get_split_cam_configs_and_sync_data(argoverse_tracking_root_dir, split_dir, 
         argoverse-tracking split root dir, e.g.: path_to_data/argoverse-tracking/train1
 
     camera_list: list
-        list of camera for which to load the parameters. Must be in Argoverse's CAMERA_LIST
+        list of camera for which to load the parameters. Must be in argoverse's CAMERA_LIST
 
     Returns
     -------
@@ -66,6 +66,7 @@ def get_split_cam_configs_and_sync_data(argoverse_tracking_root_dir, split_dir, 
         A dictionary where the key is the log string and the value a dict corresponding to the cameras' parameters
     """
 
+    calibs = {}
     camera_configs = {}
     synchronized_data = []
 
@@ -73,13 +74,13 @@ def get_split_cam_configs_and_sync_data(argoverse_tracking_root_dir, split_dir, 
     valid_logs = list(db.get_valid_logs())  # log_ids founds under split_dir
 
     split = split_dir.stem  # e.g., train1
-    for log in valid_logs:
-        camera_configs[log] = load_camera_config(str(split_dir / log / VEHICLE_CALIBRATION_INFO_FILENAME),
+    for log in tqdm(valid_logs):
+        camera_configs[log], calibs[log] = load_camera_config(str(split_dir / log / VEHICLE_CALIBRATION_INFO_FILENAME),
                                                       camera_list)
         synchronized_data += get_synchronized_data(argoverse_tracking_root_dir, db, split, log, camera_list,
                                                    source_views_indexes)
 
-    return camera_configs, synchronized_data
+    return calibs, camera_configs, synchronized_data
 
 
 def get_synchronized_data(argoverse_tracking_root_dir, db, split_name, log, camera_list, source_views_indexes=None):
@@ -204,7 +205,7 @@ def get_source_view_paths_from_img_path_and_indexes(db, log, img_path, source_vi
     Parameters
     ----------
     img_path: str
-        Absolute or relative path to the data sample in Argoverse-tracking format.
+        Absolute or relative path to the data sample in argoverse-tracking format.
         e.g.: path_to_dataset_root_dir/train1/6f153f9c-edc5-389f-ac6f-40705c30d97e/ring_front_center/ring_front_center_315966434380895928.jpg
     source_views_indexes : list of int
         The relative indexes to sample from the neighbouring views of the target view.
@@ -241,7 +242,8 @@ def get_source_view_paths_from_img_path_and_indexes(db, log, img_path, source_vi
 
     return source_views_img_paths
 
-def collect_cam_configs_and_sync_data(argoverse_tracking_root_dir, camera_list, split_name, source_views_indexes):
+def collect_cam_configs_and_sync_data(argoverse_tracking_root_dir, camera_list, split_name, source_views_indexes,
+                                      return_calib=False):
 
     """
     :param argoverse_tracking_root_dir:
@@ -258,62 +260,54 @@ def collect_cam_configs_and_sync_data(argoverse_tracking_root_dir, camera_list, 
     assert argoverse_tracking_root_dir.exists(), argoverse_tracking_root_dir
     argoverse_tracking_root_dir = argoverse_tracking_root_dir
 
-    assert split_name in ['train', 'val', 'test']
+    assert split_name in ARGO_SPLIT_NAMES
 
-    camera_list = validate_camera_option(camera_list)
-
-    if split_name == 'train':
-        camera_configs = {}
-        samples_and_source_views_paths = []
-        for split in ['train1', 'train2', 'train3', 'train4']:
-            split_dir = argoverse_tracking_root_dir / split
-            assert split_dir.exists(), split_dir
-            cc, paths = get_split_cam_configs_and_sync_data(argoverse_tracking_root_dir, split_dir, camera_list,
-                                                            source_views_indexes)
-            camera_configs.update(cc)
-            samples_and_source_views_paths += paths
-    else:
-        split_dir = argoverse_tracking_root_dir / split_name
-        assert split_dir.exists(), split_dir
-        cc, paths = get_split_cam_configs_and_sync_data(argoverse_tracking_root_dir, split_dir, camera_list,
-                                                        source_views_indexes)
-        camera_configs, samples_and_source_views_paths = cc, paths
+    split_dir = argoverse_tracking_root_dir / split_name
+    assert split_dir.exists(), split_dir
+    calibs, cc, paths = get_split_cam_configs_and_sync_data(argoverse_tracking_root_dir, split_dir, camera_list,
+                                                    source_views_indexes)
+    camera_configs, samples_and_source_views_paths = cc, paths
 
     logger.info(f'Dataset for split {split_name} ready.\n\n' + '-' * 90 + '\n\n')
 
-    return camera_configs, samples_and_source_views_paths
+    if return_calib:
+        return  calibs, camera_configs, samples_and_source_views_paths
+    else:
+        return camera_configs, samples_and_source_views_paths
 
 @click.command()
 @click.argument('argo_tracking_root_dir', type=click.Path(exists=True, file_okay=False)) # .../argoverse-tracking/ under which you can find "train1", "train2", ...
 @click.argument('output_base_dir', type=click.Path(exists=True, file_okay=False))
-@click.option('--acc_sweeps', type=int)
-@click.option('--ip_basic', is_flag=True)
-def main(argo_tracking_root_dir, output_base_dir, cameras, acc_sweeps, ip_basic):
+def main(argo_tracking_root_dir, output_base_dir):
     print('Synchronizing data....')
     print("INPUT DIR: ", argo_tracking_root_dir)
 
     output_base_dir = Path(output_base_dir).expanduser().resolve()
-    output_file_path = str(output_base_dir / f"synchronized_data.pkl")
+    output_file_path = str(output_base_dir / f"argoverse_ring_synchronized_data.pkl")
 
     print("OUTPUT File: ", output_file_path)
 
     output = {}
 
-    for split_name in ['train', 'val', 'test']:
+    for split_name in ARGO_SPLIT_NAMES:
 
-        split_data = collect_cam_configs_and_sync_data(argo_tracking_root_dir, CAMERA_LIST, split_name, None)
+        print(f"processing {split_name} split...")
+
+        split_data = collect_cam_configs_and_sync_data(argo_tracking_root_dir, RING_CAMERA_LIST,
+                                                       split_name, source_views_indexes=None, return_calib=True)
 
         output[split_name] = {
-            'camera_configs': split_data[0],
-            'camera_list': CAMERA_LIST,
+            'calibs': split_data[0],
+            'camera_configs': split_data[1],
+            'camera_list': RING_CAMERA_LIST,
             'source_views_indexes': None,
-            'samples_paths': split_data[1],
+            'samples_paths': split_data[2],
         }
 
     with open(output_file_path, 'wb') as f:
         pickle.dump(output, f)
 
-    print('Argoverse data Lidar-synchronized for all cameras.')
+    print('argoverse data Lidar-synchronized for ring cameras.')
 
 
 

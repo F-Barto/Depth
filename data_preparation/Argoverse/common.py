@@ -4,14 +4,16 @@ from argoverse.utils.camera_stats import (
     STEREO_CAMERA_LIST
 )
 
-def validate_camera_option(cameras: str):
+def validate_camera_option(cameras):
     """
     Just checks the list of cameras names is valid and return a list without duplicates
     Assumes `cameras` is a comma separated list of camera names
     """
     camera_set = set()
 
-    cameras = cameras.split(',')
+    if isinstance(cameras, str):
+        cameras = cameras.split(',')
+
     for camera in cameras:
 
         if camera == "ring":

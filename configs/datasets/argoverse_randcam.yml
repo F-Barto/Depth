@@ -1,8 +1,8 @@
 # only for convenience purpose, not used internally
 argoverse_tracking_root_dir: /home/clear/fbartocc/data/ARGOVERSE/argoverse-tracking
 splits_base_dir: /home/clear/fbartocc/output_data/MultiCamDepth/MultiCamMonoDepthArgo
-depth_root_dir: /home/clear/fbartocc/working_data/Argoverse_projected_lidar
-sparse_depth_root_dir: /home/clear/fbartocc/working_data/Argoverse_sparse_projected_lidar
+depth_root_dir: /home/clear/fbartocc/working_data/Argoverse/gt_depth/5_sweeps_accumulated_ip_basic
+sparse_depth_root_dir: /home/clear/fbartocc/working_data/Argoverse/sparse_lidar_projection/up_and_down_all_beams
 
 datasets:
     dataset_name: rand_cam_argoverse
