@@ -195,7 +195,7 @@ def prepare_images_to_log(learning_phase, batch, output, batch_idx, log_images_i
 
     cmaps = [None, 'magma', 'magma', 'magma']
 
-    if hasattr(batch, 'sparse_projected_lidar'):
+    if batch.get('sparse_projected_lidar', None) is not None:
         sparse_projected_lidar = prep_depth('sparse_projected_lidar', batch, i=i)
         img_list.append(sparse_projected_lidar)
         titles.append('sparse_lidar')
