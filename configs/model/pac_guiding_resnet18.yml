@@ -3,6 +3,7 @@ model:
   depth_net:
     name: guiding
     options:
+      guidance: pac
       num_layers: 18      # choices=[18, 34, 50, 101, 152]
   pose_net:
     name: monodepth

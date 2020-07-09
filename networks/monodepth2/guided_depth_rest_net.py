@@ -8,8 +8,10 @@ from networks.monodepth2.layers.resnet_encoder import ResnetEncoder
 from networks.monodepth2.layers.depth_decoder import DepthDecoder
 from networks.monodepth2.layers.common import disp_to_depth
 from networks.pac import PacConv2d
+from networks.attention_guidance import AttentionGuidance
 
 ########################################################################################################################
+
 
 class GuidedDepthResNet(nn.Module):
     """
@@ -24,24 +26,34 @@ class GuidedDepthResNet(nn.Module):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, num_layers=18, input_channels=3):
+    def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac'):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
+        assert guidance in ['pac', 'attention']
+
+
         # keeping the name `encoder` so that we can use pre-trained weight directly
-        self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels)
-        self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1)
+        self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels, activation=activation)
+        self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1, activation=activation,
+                                           no_first_norm=True)
 
         self.num_ch_enc = self.encoder.num_ch_enc
-        self.relu = nn.ReLU(inplace=True)
+        self.activation = self.encoder.activation_cls(inplace=True)
 
         # at each resblock fuse with PAC the features of both encoders
         self.pacs = OrderedDict()
         for i in range(len(self.num_ch_enc)):
             # upconv_0
             num_ch =  self.num_ch_enc[i]
-            self.pacs[("pac", i)] = PacConv2d(num_ch, num_ch, 3, padding=1, native_impl=False)
+
+            if guidance == 'pac':
+                self.guidances[("guidance", i)] = PacConv2d(num_ch, num_ch, 3, padding=1, native_impl=False)
+            elif guidance == 'attentioin':
+                self.guidances[("guidance", i)] = AttentionGuidance(num_ch, self.encoder.activation_cls)
+            else:
+                print(f"guidance {guidance} not implemented")
 
         self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc)
 
@@ -57,7 +69,7 @@ class GuidedDepthResNet(nn.Module):
 
         self.guided_features = []
         for i in range(len(self.num_ch_enc)):
-            guided_feature = self.pacs[("pac", i)](cam_features[i], lidar_features[i])
+            guided_feature = self.guidances[("guidance", i)](cam_features[i], lidar_features[i])
             self.guided_features.append(guided_feature)
 
         x = self.decoder(self.guided_features)
