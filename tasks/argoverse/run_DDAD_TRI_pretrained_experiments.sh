@@ -37,5 +37,12 @@ python ./submit_job.py -n $NAME --gpumem 16000 \
 -mf ../configs/experiments/argoverse/self_supervised_randcam.yml \
 -mo "model.tri_checkpoint_path='/home/clear/fbartocc/depth_project/Depth/weights/ResNet18_MR_selfsup_D.ckpt' losses=velocity_loss model=monodepth50 datasets.train.load_pose=True"
 
-################## Bigger batch
+################## mish activation
+
+NAME=pretrained_D_mish_photo_ranger_cosannealstart=25e-2_lr=9e-5_bs=8_resnet18_`date +"%m%d%y_%H%M%S"`; \
+python ./submit_job.py -n $NAME --gpumem 13000 \
+-pf ../configs/projects/monocular_frontcam_depth_argo.yml \
+-po "experiment_name=$NAME" \
+-mf ../configs/experiments/argoverse/self_supervised_randcam.yml \
+-mo "model.tri_checkpoint_path='/home/clear/fbartocc/depth_project/Depth/weights/ResNet18_MR_selfsup_D.ckpt' model.depth_net.options.activation=mish"
 

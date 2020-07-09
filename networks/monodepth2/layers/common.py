@@ -8,6 +8,24 @@ from __future__ import absolute_import, division, print_function
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils.mish import MishAuto
+
+def get_activation(activation_name):
+    activations = {
+        'relu': nn.ReLU,
+        'lrelu': nn.LeakyReLU,
+        'elu': nn.ELU,
+        'mish': MishAuto
+    }
+
+    possible_activation_names = list(activations.keys())
+
+    assert activation_name in possible_activation_names, f"Activation func name must be in {possible_activation_names}"
+
+    return activations[activation_name]
+
+
+
 
 def disp_to_depth(disp, min_depth, max_depth):
     """Convert network's sigmoid output into depth prediction
@@ -22,17 +40,17 @@ def disp_to_depth(disp, min_depth, max_depth):
 
 
 class ConvBlock(nn.Module):
-    """Layer to perform a convolution followed by ELU
+    """Layer to perform a convolution followed by activation function
     """
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, activation):
         super(ConvBlock, self).__init__()
 
         self.conv = Conv3x3(in_channels, out_channels)
-        self.nonlin = nn.ELU(inplace=True)
+        self.activation = activation(inplace=True)
 
     def forward(self, x):
         out = self.conv(x)
-        out = self.nonlin(out)
+        out = self.activation(out)
         return out
 
 

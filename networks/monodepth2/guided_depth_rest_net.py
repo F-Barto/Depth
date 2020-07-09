@@ -6,7 +6,7 @@ from collections import OrderedDict
 
 from networks.monodepth2.layers.resnet_encoder import ResnetEncoder
 from networks.monodepth2.layers.depth_decoder import DepthDecoder
-from networks.monodepth2.layers.common import disp_to_depth
+from networks.monodepth2.layers.common import disp_to_depth, get_activation
 from networks.pac import PacConv2d
 from networks.attention_guidance import AttentionGuidance
 
@@ -33,16 +33,17 @@ class GuidedDepthResNet(nn.Module):
 
         assert guidance in ['pac', 'attention']
 
+        activation_cls = get_activation(activation)
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
-        self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels, activation=activation)
-        self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1, activation=activation,
-                                           no_first_norm=True)
+        self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels,
+                                     activation=activation_cls)
+        self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1,
+                                           activation=activation_cls, no_first_norm=True)
 
         self.num_ch_enc = self.encoder.num_ch_enc
-        self.activation = self.encoder.activation_cls(inplace=True)
 
-        # at each resblock fuse with PAC the features of both encoders
+        # at each resblock fuse with guidance the features of both encoders
         self.pacs = OrderedDict()
         for i in range(len(self.num_ch_enc)):
             # upconv_0
@@ -51,11 +52,11 @@ class GuidedDepthResNet(nn.Module):
             if guidance == 'pac':
                 self.guidances[("guidance", i)] = PacConv2d(num_ch, num_ch, 3, padding=1, native_impl=False)
             elif guidance == 'attentioin':
-                self.guidances[("guidance", i)] = AttentionGuidance(num_ch, self.encoder.activation_cls)
+                self.guidances[("guidance", i)] = AttentionGuidance(num_ch, activation_cls)
             else:
                 print(f"guidance {guidance} not implemented")
 
-        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc)
+        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc, activation=activation_cls)
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=100.0)
 

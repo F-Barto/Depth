@@ -5,6 +5,7 @@ import torch.nn as nn
 
 from networks.monodepth2.layers.resnet_encoder import ResnetEncoder
 from networks.monodepth2.layers.pose_decoder import PoseDecoder
+from networks.monodepth2.layers.common import get_activation
 
 ########################################################################################################################
 
@@ -21,13 +22,16 @@ class PoseResNet(nn.Module):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, num_layers=18):
+    def __init__(self, num_layers=18, activation='relu'):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
-        self.encoder = ResnetEncoder(num_layers=num_layers, num_input_images=2)
-        self.decoder = PoseDecoder(self.encoder.num_ch_enc, num_input_features=1, num_frames_to_predict_for=2)
+        activation_cls = get_activation(activation)
+
+        self.encoder = ResnetEncoder(num_layers=num_layers, activation=activation_cls, num_input_images=2)
+        self.decoder = PoseDecoder(num_ch_enc=self.encoder.num_ch_enc, num_input_features=1,
+                                   activation=activation_cls, num_frames_to_predict_for=2)
 
     def forward(self, target_image, ref_imgs):
         """

@@ -7,9 +7,9 @@ from utils.mish import MishAuto
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
+    def __init__(self, block, layers, activation, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, input_channels=3, activation='relu', no_first_norm=False):
+                 norm_layer=None, input_channels=3, no_first_norm=False):
         super(ResNet, self).__init__()
 
         if norm_layer is None:
@@ -17,15 +17,6 @@ class ResNet(nn.Module):
         self._norm_layer = norm_layer
 
         self.no_first_norm = no_first_norm
-
-        activations = {
-            'relu': nn.ReLU,
-            'lrelu': nn.LeakyReLU,
-            'elu': nn.ELU,
-            'mish': MishAuto
-        }
-
-        self.activation_cls = activations[activation]
 
         self.inplanes = 64
         self.dilation = 1
@@ -42,14 +33,14 @@ class ResNet(nn.Module):
                                bias=False)
         if not self.no_first_norm:
             self.bn1 = norm_layer(self.inplanes)
-        self.activation = self.activation_cls(inplace=True)
+        self.activation = activation(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0], self.activation_cls)
-        self.layer2 = self._make_layer(block, 128, layers[1], self.activation_cls, stride=2,
+        self.layer1 = self._make_layer(block, 64, layers[0], activation)
+        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2,
                                        dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], self.activation_cls, stride=2,
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=2,
                                        dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], self.activation_cls, stride=2,
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -85,7 +76,7 @@ class ResNet(nn.Module):
             )
 
         layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample, self.groups,
+        layers.append(block(self.inplanes, planes, activation, stride, downsample, self.groups,
                             self.base_width, previous_dilation, norm_layer))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
@@ -118,56 +109,56 @@ class ResNet(nn.Module):
         return self._forward_impl(x)
 
 
-def _resnet(block, layers, **kwargs):
-    model = ResNet(block, layers, **kwargs)
+def _resnet(block, layers, activation, **kwargs):
+    model = ResNet(block, layers, activation, **kwargs)
 
     return model
 
-def resnet18(**kwargs):
+def resnet18(activation, **kwargs):
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet(BasicBlock, [2, 2, 2, 2], **kwargs)
+    return _resnet(BasicBlock, [2, 2, 2, 2], activation, **kwargs)
 
 
-def resnet34(**kwargs):
+def resnet34(activation, **kwargs):
     r"""ResNet-34 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet(BasicBlock, [3, 4, 6, 3], **kwargs)
+    return _resnet(BasicBlock, [3, 4, 6, 3], activation, **kwargs)
 
 
-def resnet50(**kwargs):
+def resnet50(activation, **kwargs):
     r"""ResNet-50 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    return _resnet(Bottleneck, [3, 4, 6, 3], activation, **kwargs)
 
 
-def resnet101(**kwargs):
+def resnet101(activation, **kwargs):
     r"""ResNet-101 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet(Bottleneck, [3, 4, 23, 3], **kwargs)
+    return _resnet(Bottleneck, [3, 4, 23, 3], activation, **kwargs)
 
 
-def resnet152(**kwargs):
+def resnet152(activation, **kwargs):
     r"""ResNet-152 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet(Bottleneck, [3, 8, 36, 3], **kwargs)
+    return _resnet(Bottleneck, [3, 8, 36, 3], activation, **kwargs)

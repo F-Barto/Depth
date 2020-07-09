@@ -3,7 +3,8 @@ from functools import partial
 
 from networks.monodepth2.layers.resnet_encoder import ResnetEncoder
 from networks.monodepth2.layers.depth_decoder import DepthDecoder
-from networks.monodepth2.layers.common import disp_to_depth
+from networks.monodepth2.layers.common import disp_to_depth, get_activation
+
 
 ########################################################################################################################
 
@@ -20,13 +21,15 @@ class DepthResNet(nn.Module):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, num_layers=18):
+    def __init__(self, num_layers=18, activation='relu'):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
-        self.encoder = ResnetEncoder(num_layers=num_layers)
-        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc)
+        activation_cls = get_activation(activation)
+
+        self.encoder = ResnetEncoder(num_layers=num_layers, activation=activation_cls)
+        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc, activation=activation_cls)
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=100.0)
 
     def forward(self, x):

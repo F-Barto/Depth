@@ -15,20 +15,19 @@ class ResNetMultiImageInput(models.ResNet):
     """Constructs a resnet model with varying number of input images.
     Adapted from https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
     """
-    def __init__(self, block, layers, num_input_images=1, input_channels=3, activation='relu', no_first_norm=False):
-        super(ResNetMultiImageInput, self).__init__(block, layers, input_channels=input_channels,
-                                                    activation=activation, no_first_norm=no_first_norm)
+    def __init__(self, block, layers, activation, num_input_images=1, input_channels=3, no_first_norm=False):
+        super(ResNetMultiImageInput, self).__init__(block, layers, activation, input_channels=input_channels,
+                                                    no_first_norm=no_first_norm)
         self.inplanes = 64
         self.conv1 = nn.Conv2d(
             num_input_images * input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
         if not self.no_first_norm:
             self.bn1 = nn.BatchNorm2d(64)
-        self.activation = self.activation_cls(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        self.layer1 = self._make_layer(block, 64, layers[0], activation)
+        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=2)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -38,7 +37,7 @@ class ResNetMultiImageInput(models.ResNet):
                 nn.init.constant_(m.bias, 0)
 
 
-def resnet_multiimage_input(num_layers, num_input_images=1, input_channels=3, activation='relu', no_first_norm=False):
+def resnet_multiimage_input(num_layers, activation, num_input_images=1, input_channels=3, no_first_norm=False):
     """Constructs a ResNet model.
     Args:
         num_layers (int): Number of resnet layers. Must be 18 or 50
@@ -57,8 +56,8 @@ def resnet_multiimage_input(num_layers, num_input_images=1, input_channels=3, ac
         50: Bottleneck
     }[num_layers]
 
-    model = ResNetMultiImageInput(block_type, blocks, num_input_images=num_input_images, input_channels=input_channels,
-                                  activation=activation, no_first_norm=no_first_norm)
+    model = ResNetMultiImageInput(block_type, blocks, activation, num_input_images=num_input_images,
+                                  input_channels=input_channels, no_first_norm=no_first_norm)
 
     return model
 
@@ -66,7 +65,7 @@ def resnet_multiimage_input(num_layers, num_input_images=1, input_channels=3, ac
 class ResnetEncoder(nn.Module):
     """Pytorch module for a resnet encoder
     """
-    def __init__(self, num_layers, num_input_images=1, input_channels=3, activation='relu', no_first_norm=False):
+    def __init__(self, num_layers, activation, num_input_images=1, input_channels=3, no_first_norm=False):
         super(ResnetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
@@ -81,10 +80,10 @@ class ResnetEncoder(nn.Module):
             raise ValueError("{} is not a valid number of resnet layers".format(num_layers))
 
         if num_input_images > 1:
-            self.encoder = resnet_multiimage_input(num_layers, num_input_images, input_channels=input_channels,
-                                                   activation=activation, no_first_norm=no_first_norm)
+            self.encoder = resnet_multiimage_input(num_layers, activation, num_input_images,
+                                                   input_channels=input_channels, no_first_norm=no_first_norm)
         else:
-            self.encoder = resnets[num_layers](input_channels=input_channels, activation=activation,
+            self.encoder = resnets[num_layers](activation, input_channels=input_channels,
                                                no_first_norm=no_first_norm)
 
         if num_layers > 34:

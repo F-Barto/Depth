@@ -110,8 +110,8 @@ class RandCamSequentialArgoverseLoader(Dataset):
         self.source_views_requested = source_views_indexes is not None and len(source_views_indexes) > 0
 
         # filter out samples where gt depth is not available for val and test
-        terminal_logger.info("Filtering out samples which don't have ground truth depth")
         if self.split_name in ['val', 'test']:
+            terminal_logger.info("Filtering out samples which don't have ground truth depth")
             self.samples_paths = [sample for sample in self.samples_paths if self.has_gt_depth(sample)]
 
         terminal_logger.info(f'Dataset for split {self.split_name} ready.\n\n' + '-'*90 + '\n\n')

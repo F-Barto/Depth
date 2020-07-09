@@ -14,7 +14,7 @@ from .common import ConvBlock, Conv3x3, upsample
 
 
 class DepthDecoder(nn.Module):
-    def __init__(self, num_ch_enc, scales=range(4), num_output_channels=1, use_skips=True):
+    def __init__(self, num_ch_enc, activation, scales=range(4), num_output_channels=1, use_skips=True):
         super(DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels
@@ -31,14 +31,14 @@ class DepthDecoder(nn.Module):
             # upconv_0
             num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out)
+            self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out, activation)
 
             # upconv_1
             num_ch_in = self.num_ch_dec[i]
             if self.use_skips and i > 0:
                 num_ch_in += self.num_ch_enc[i - 1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[("upconv", i, 1)] = ConvBlock(num_ch_in, num_ch_out)
+            self.convs[("upconv", i, 1)] = ConvBlock(num_ch_in, num_ch_out, activation)
 
         for s in self.scales:
             self.convs[("dispconv", s)] = Conv3x3(self.num_ch_dec[s], self.num_output_channels)
