@@ -41,8 +41,8 @@ class RandCamSequentialArgoverseLoader(Dataset):
         Prints the animals name and what sound it makes
     """
 
-    def __init__(self, argoverse_tracking_root_dir, camera_list=None, split_name=None, depth_root_dir=None,
-                 sparse_depth_root_dir=None, data_transform=None, data_transform_options=None, source_views_indexes=None,
+    def __init__(self, argoverse_tracking_root_dir,  gt_depth_root_dir=None,
+                 sparse_depth_root_dir=None, data_transform=None, data_transform_options=None,
                  load_pose=False, split_file=None, input_channels=3):
 
         """
@@ -51,9 +51,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
         argoverse_tracking_root_dir : str
             The path to the root of the argoverse tracking dataset,
             e.g., /home/clear/fbartocc/data/ARGOVERSE/argoverse-tracking
-        split_name : str
-            either 'train', 'val' or 'test'
-        depth_root_dir : str
+        gt_depth_root_dir : str
             The path to where the computed depth maps are stored.
             If not None, the depth from LiDAR data of each frame will be returned.
         data_transform :
@@ -67,10 +65,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
         """
         super().__init__()
 
-        recompute_sync_data = split_name is not None and source_views_indexes is not None and camera_list is not None
-        load_sync_data = split_file is not None
-
-        assert recompute_sync_data or load_sync_data, 'Either load a split_file data or give paramas to recompute sync.'
+        self.load_pose = load_pose
 
         argoverse_tracking_root_dir = Path(argoverse_tracking_root_dir).expanduser()
         assert argoverse_tracking_root_dir.exists(), argoverse_tracking_root_dir
@@ -85,11 +80,11 @@ class RandCamSequentialArgoverseLoader(Dataset):
         if data_transform is not None:
             assert data_transform_options is not None
 
-        if depth_root_dir is not None:
-            depth_root_dir = Path(depth_root_dir)
-            assert depth_root_dir.exists(), depth_root_dir
-            self.depth_root_dir = depth_root_dir
-            terminal_logger.info(f"The GT depth from LiDAR data of each frame will be loaded from {str(depth_root_dir)}.")
+        if gt_depth_root_dir is not None:
+            gt_depth_root_dir = Path(gt_depth_root_dir)
+            assert gt_depth_root_dir.exists(), gt_depth_root_dir
+            self.gt_depth_root_dir = gt_depth_root_dir
+            terminal_logger.info(f"The GT depth from LiDAR data of each frame will be loaded from {str(gt_depth_root_dir)}.")
 
         self.load_sparse_depth = False
         if sparse_depth_root_dir is not None:
@@ -100,38 +95,36 @@ class RandCamSequentialArgoverseLoader(Dataset):
             terminal_logger.info(
                 f"The sparse depth from LiDAR data of each frame will be loaded from {str(sparse_depth_root_dir)}.")
 
-        if split_file is not None:
-            with open(split_file, 'rb') as f:
-                split_data = pickle.load(f)
-            source_views_indexes = split_data['source_views_indexes']
-            self.split_name = split_data['split_name']
-            self.camera_list = split_data['camera_list']
-            self.camera_configs = split_data['camera_configs']
-            self.samples_paths = split_data['samples_paths']
-            self.translation_magnitudes = split_data.get('translation_magnitudes', None)
-        else:
-            from data_preparation.argoverse.data_synchronization import collect_cam_configs_and_sync_data
-            self.split_name = split_name
-            self.camera_list = camera_list
-
-            self.camera_configs, self.samples_paths = collect_cam_configs_and_sync_data(argoverse_tracking_root_dir,
-                                                                                        camera_list,
-                                                                                        split_name=split_name,
-                                                                                        source_views_indexes=source_views_indexes)
-
-        # source_views_indexes validation
-        src_indexes_err_msg = "It is expected the source index list is in ascending order and does not contains 0 " \
-                              "(corresponding to the target)\n " \
-                              "For example, source_indexes=[-1,1] will load the views at time t-1, t, t+1\n" \
-                              f"yours: {source_views_indexes}"
-        assert 0 not in source_views_indexes, src_indexes_err_msg
-        self.source_views_requested = source_views_indexes is not None and len(source_views_indexes) > 0
+        assert split_file is not None
+        with open(split_file, 'rb') as f:
+            split_data = pickle.load(f)
+        source_views_indexes = split_data['source_views_indexes']
+        self.split_name = split_data['split_name']
+        self.camera_list = split_data['camera_list']
+        self.camera_configs = split_data['camera_configs']
+        self.samples_paths = split_data['samples_paths']
+        self.translation_magnitudes = split_data.get('translation_magnitudes', None)
 
         assert self.split_name in ['train', 'val', 'test']
 
-        self.load_pose = load_pose
+        self.source_views_requested = source_views_indexes is not None and len(source_views_indexes) > 0
+
+        # filter out samples where gt depth is not available for val and test
+        terminal_logger.info("Filtering out samples which don't have ground truth depth")
+        if self.split_name in ['val', 'test']:
+            self.samples_paths = [sample for sample in self.samples_paths if self.has_gt_depth(sample)]
 
         terminal_logger.info(f'Dataset for split {self.split_name} ready.\n\n' + '-'*90 + '\n\n')
+
+    def has_gt_depth(self, sample):
+        lidar_path = sample[0]
+        # we only need to test for one camera, as the only case where gt is not available
+        # is when we are at log boundaries so we can't accumulate lidar sweeps. So gt is not available for all cams.
+        camera_name = self.camera_list[0]
+        gt_depth_filepath = self.get_projected_lidar_path(camera_name, lidar_path, self.gt_depth_root_dir)
+
+        return Path(gt_depth_filepath).exists()
+
 
 
     def get_projected_lidar_path(self, camera_name, lidar_path, depth_base_dir):
@@ -168,7 +161,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
         target_view = self.load_img(target_view_path)
 
         lidar_path = self.samples_paths[idx][0]  # the .ply file
-        projected_lidar_path = self.get_projected_lidar_path(camera_name, lidar_path, self.depth_root_dir)
+        projected_lidar_path = self.get_projected_lidar_path(camera_name, lidar_path, self.gt_depth_root_dir)
         projected_lidar = self.read_npz_depth(projected_lidar_path)
 
         sample = {

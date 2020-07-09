@@ -20,7 +20,6 @@ $OUTPUT_BASE_DIR/argoverse_ring_synchronized_data.pkl \
 --acc_sweeps 5 \
 --ip_basic
 
-
 ##############################################
 
 # generating sparse Lidar projection all beams with no separation between up and down lidars

@@ -307,7 +307,7 @@ def main(argo_tracking_root_dir, output_base_dir):
     with open(output_file_path, 'wb') as f:
         pickle.dump(output, f)
 
-    print('argoverse data Lidar-synchronized for all cameras.')
+    print('argoverse data Lidar-synchronized for ring cameras.')
 
 
 
