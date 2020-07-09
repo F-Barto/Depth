@@ -1,16 +1,31 @@
 import torch
 from torch import nn
-from .blocks import conv1x1, conv3x3, BasicBlock, Bottleneck
+from .blocks import conv1x1, BasicBlock, Bottleneck
+from utils.mish import MishAuto
+
+
 
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, zero_init_residual=False,
                  groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, input_channels=3):
+                 norm_layer=None, input_channels=3, activation='relu', no_first_norm=False):
         super(ResNet, self).__init__()
+
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
+
+        self.no_first_norm = no_first_norm
+
+        activations = {
+            'relu': nn.ReLU,
+            'lrelu': nn.LeakyReLU,
+            'elu': nn.ELU,
+            'mish': MishAuto
+        }
+
+        self.activation_cls = activations[activation]
 
         self.inplanes = 64
         self.dilation = 1
@@ -25,15 +40,16 @@ class ResNet(nn.Module):
         self.base_width = width_per_group
         self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
                                bias=False)
-        self.bn1 = norm_layer(self.inplanes)
-        self.relu = nn.ReLU(inplace=True)
+        if not self.no_first_norm:
+            self.bn1 = norm_layer(self.inplanes)
+        self.activation = self.activation_cls(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2,
+        self.layer1 = self._make_layer(block, 64, layers[0], self.activation_cls)
+        self.layer2 = self._make_layer(block, 128, layers[1], self.activation_cls, stride=2,
                                        dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2,
+        self.layer3 = self._make_layer(block, 256, layers[2], self.activation_cls, stride=2,
                                        dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
+        self.layer4 = self._make_layer(block, 512, layers[3], self.activation_cls, stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
@@ -55,7 +71,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
+    def _make_layer(self, block, planes, blocks, activation, stride=1, dilate=False):
         norm_layer = self._norm_layer
         downsample = None
         previous_dilation = self.dilation
@@ -73,7 +89,7 @@ class ResNet(nn.Module):
                             self.base_width, previous_dilation, norm_layer))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, groups=self.groups,
+            layers.append(block(self.inplanes, planes, activation, groups=self.groups,
                                 base_width=self.base_width, dilation=self.dilation,
                                 norm_layer=norm_layer))
 
@@ -82,8 +98,9 @@ class ResNet(nn.Module):
     def _forward_impl(self, x):
         # See note [TorchScript super()]
         x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
+        if not self.no_first_norm:
+            x = self.bn1(x)
+        x = self.activation(x)
         x = self.maxpool(x)
 
         x = self.layer1(x)

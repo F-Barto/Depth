@@ -1,7 +1,5 @@
-# code from https://github.com/TRI-ML/packnet-sfm/blob/master/packnet_sfm/networks/layers/resnet/resnet_encoder.py
-
-# Adapted from monodepth2
-# https://github.com/nianticlabs/monodepth2/blob/master/networks/resnet_encoder.py
+# Adapted from https://github.com/TRI-ML/packnet-sfm/blob/master/packnet_sfm/networks/layers/resnet/resnet_encoder.py
+# and https://github.com/nianticlabs/monodepth2/blob/master/networks/resnet_encoder.py
 
 from __future__ import absolute_import, division, print_function
 
@@ -17,13 +15,15 @@ class ResNetMultiImageInput(models.ResNet):
     """Constructs a resnet model with varying number of input images.
     Adapted from https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py
     """
-    def __init__(self, block, layers, num_input_images=1, input_channels=3):
-        super(ResNetMultiImageInput, self).__init__(block, layers, input_channels=input_channels)
+    def __init__(self, block, layers, num_input_images=1, input_channels=3, activation='relu', no_first_norm=False):
+        super(ResNetMultiImageInput, self).__init__(block, layers, input_channels=input_channels,
+                                                    activation=activation, no_first_norm=no_first_norm)
         self.inplanes = 64
         self.conv1 = nn.Conv2d(
             num_input_images * input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=True)
+        if not self.no_first_norm:
+            self.bn1 = nn.BatchNorm2d(64)
+        self.activation = self.activation_cls(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
@@ -38,7 +38,7 @@ class ResNetMultiImageInput(models.ResNet):
                 nn.init.constant_(m.bias, 0)
 
 
-def resnet_multiimage_input(num_layers, num_input_images=1, input_channels=3):
+def resnet_multiimage_input(num_layers, num_input_images=1, input_channels=3, activation='relu', no_first_norm=False):
     """Constructs a ResNet model.
     Args:
         num_layers (int): Number of resnet layers. Must be 18 or 50
@@ -57,7 +57,8 @@ def resnet_multiimage_input(num_layers, num_input_images=1, input_channels=3):
         50: Bottleneck
     }[num_layers]
 
-    model = ResNetMultiImageInput(block_type, blocks, num_input_images=num_input_images, input_channels=input_channels)
+    model = ResNetMultiImageInput(block_type, blocks, num_input_images=num_input_images, input_channels=input_channels,
+                                  activation=activation, no_first_norm=no_first_norm)
 
     return model
 
@@ -65,7 +66,7 @@ def resnet_multiimage_input(num_layers, num_input_images=1, input_channels=3):
 class ResnetEncoder(nn.Module):
     """Pytorch module for a resnet encoder
     """
-    def __init__(self, num_layers, num_input_images=1, input_channels=3):
+    def __init__(self, num_layers, num_input_images=1, input_channels=3, activation='relu', no_first_norm=False):
         super(ResnetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
@@ -80,19 +81,22 @@ class ResnetEncoder(nn.Module):
             raise ValueError("{} is not a valid number of resnet layers".format(num_layers))
 
         if num_input_images > 1:
-            self.encoder = resnet_multiimage_input(num_layers, num_input_images, input_channels=input_channels)
+            self.encoder = resnet_multiimage_input(num_layers, num_input_images, input_channels=input_channels,
+                                                   activation=activation, no_first_norm=no_first_norm)
         else:
-            self.encoder = resnets[num_layers](input_channels=input_channels)
+            self.encoder = resnets[num_layers](input_channels=input_channels, activation=activation,
+                                               no_first_norm=no_first_norm)
 
         if num_layers > 34:
             self.num_ch_enc[1:] *= 4
 
     def forward(self, input_image):
         self.features = []
-        x = (input_image - 0.45) / 0.225
-        x = self.encoder.conv1(x)
-        x = self.encoder.bn1(x)
-        self.features.append(self.encoder.relu(x))
+        #x = (input_image - 0.45) / 0.225 # where does this comes from ?
+        x = self.encoder.conv1(input_image)
+        if not self.encoder.no_first_norm:
+            x = self.encoder.bn1(x)
+        self.features.append(self.encoder.activation(x))
         self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
         self.features.append(self.encoder.layer2(self.features[-1]))
         self.features.append(self.encoder.layer3(self.features[-1]))
