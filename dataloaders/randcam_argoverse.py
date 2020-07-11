@@ -126,7 +126,6 @@ class RandCamSequentialArgoverseLoader(Dataset):
         return Path(gt_depth_filepath).exists()
 
 
-
     def get_projected_lidar_path(self, camera_name, lidar_path, depth_base_dir):
         lidar_path = Path(lidar_path)
         split = lidar_path.parents[2].stem
@@ -160,15 +159,17 @@ class RandCamSequentialArgoverseLoader(Dataset):
         target_view_path = self.argoverse_tracking_root_dir / self.samples_paths[idx][1+cam_idx][0]
         target_view = self.load_img(target_view_path)
 
-        lidar_path = self.samples_paths[idx][0]  # the .ply file
-        projected_lidar_path = self.get_projected_lidar_path(camera_name, lidar_path, self.gt_depth_root_dir)
-        projected_lidar = self.read_npz_depth(projected_lidar_path)
-
         sample = {
             'target_view': target_view,
-            'projected_lidar': projected_lidar,
             'idx': idx
         }
+
+        lidar_path = self.samples_paths[idx][0]  # the .ply file
+
+        if self.split_name in ['val', 'test']:
+            projected_lidar_path = self.get_projected_lidar_path(camera_name, lidar_path, self.gt_depth_root_dir)
+            projected_lidar = self.read_npz_depth(projected_lidar_path)
+            sample['projected_lidar'] = projected_lidar
 
         if self.load_sparse_depth:
             sparse_projected_lidar_path = self.get_projected_lidar_path(camera_name, lidar_path,

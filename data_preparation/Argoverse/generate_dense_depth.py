@@ -308,7 +308,7 @@ def project_and_save(argo_tracking_root_dir, output_base_dir, camera_list,
                                                      show_process=False)[0]
 
         lidar_filename = lidar_filepath.stem
-        output_dir = output_base_dir / camera_name
+        output_dir = output_base_dir / log / camera_name
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / (lidar_filename + ".npz")
         savez_compressed(str(output_path), acc_projected_lidar)

@@ -10,9 +10,9 @@ class AttentionBlock(nn.Module):
 
         planes= inplanes//2
 
-        self.conv_1x1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False),
+        self.conv_1x1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv_3x3 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, bias=False),
+        self.conv_3x3 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
 
     def forward(self, x):
@@ -36,7 +36,7 @@ class AttentionGuidance(nn.Module):
 
     def forward(self, image_features, lidar_features):
 
-        c = torch.cat((image_features, lidar_features), dim=1)
+        c = torch.cat([image_features, lidar_features], dim=1)
 
         new_image_features = image_features * self.image_attention_block(c) + image_features
         new_lidar_features = lidar_features * self.lidar_attention_block(c) + lidar_features

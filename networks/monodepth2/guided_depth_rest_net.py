@@ -44,15 +44,15 @@ class GuidedDepthResNet(nn.Module):
         self.num_ch_enc = self.encoder.num_ch_enc
 
         # at each resblock fuse with guidance the features of both encoders
-        self.pacs = OrderedDict()
+        self.guidances = nn.ModuleDict()
         for i in range(len(self.num_ch_enc)):
             # upconv_0
             num_ch =  self.num_ch_enc[i]
 
             if guidance == 'pac':
-                self.guidances[("guidance", i)] = PacConv2d(num_ch, num_ch, 3, padding=1, native_impl=False)
-            elif guidance == 'attentioin':
-                self.guidances[("guidance", i)] = AttentionGuidance(num_ch, activation_cls)
+                self.guidances.update({f"guidance_{i}" : PacConv2d(num_ch, num_ch, 3, padding=1, native_impl=False)})
+            elif guidance == 'attention':
+                self.guidances.update({f"guidance_{i}": AttentionGuidance(num_ch, activation_cls)})
             else:
                 print(f"guidance {guidance} not implemented")
 
@@ -70,7 +70,7 @@ class GuidedDepthResNet(nn.Module):
 
         self.guided_features = []
         for i in range(len(self.num_ch_enc)):
-            guided_feature = self.guidances[("guidance", i)](cam_features[i], lidar_features[i])
+            guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i])
             self.guided_features.append(guided_feature)
 
         x = self.decoder(self.guided_features)
