@@ -152,7 +152,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
 
     def __getitem__(self, idx):
 
-        cam_idx = 0#idx % len(self.camera_list)
+        cam_idx = randrange(len(self.camera_list))
         camera_name = self.camera_list[cam_idx]
 
         # self.samples_paths[idx][0] is lidar, subsequent indexes are cameras

@@ -273,7 +273,6 @@ class ReprojectedLoss(LossBase):
 
         mask = mask.view(B,1,-1).repeat([1,2,1]).detach()
 
-
         coords_pred_depth = coords_pred_depth[mask].view(2,-1) # applying mask flatten [x0,...,y0,...] so apply view
         coords_gt_depth = coords_gt_depth[mask].view(2,-1)
         loss = F.pairwise_distance(coords_pred_depth, coords_gt_depth, p=2.0, eps=1e-06, keepdim=False)
