@@ -15,8 +15,6 @@ class AttentionBlock(nn.Module):
         else:
             raise ValueError(f'Last activation choice invalid either sig or tanh: {attention_scheme}')
 
-        self.attention_scheme = attention_scheme
-
         planes= inplanes//2
 
         self.conv_1x1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
@@ -42,6 +40,8 @@ class AttentionGuidance(nn.Module):
 
         self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
         self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
+
+        self.attention_scheme = attention_scheme
 
     def forward(self, image_features, lidar_features):
 
