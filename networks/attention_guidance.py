@@ -37,11 +37,11 @@ class AttentionBlock(nn.Module):
         return out
 
 class AttentionGuidance(nn.Module):
-    def __init__(self, inplanes, activation_cls):
+    def __init__(self, inplanes, activation_cls, attention_scheme='res-sig'):
         super().__init__()
 
-        self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls)
-        self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls)
+        self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
+        self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
 
     def forward(self, image_features, lidar_features):
 

@@ -24,7 +24,7 @@ class GuidedDepthResNet(nn.Module):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac'):
+    def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac', attention_scheme='res-sig'):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
@@ -50,7 +50,7 @@ class GuidedDepthResNet(nn.Module):
             if guidance == 'pac':
                 self.guidances.update({f"guidance_{i}" : PacConv2d(num_ch, num_ch, 3, padding=1, native_impl=False)})
             elif guidance == 'attention':
-                self.guidances.update({f"guidance_{i}": AttentionGuidance(num_ch, activation_cls)})
+                self.guidances.update({f"guidance_{i}": AttentionGuidance(num_ch, activation_cls, attention_scheme)})
             else:
                 print(f"guidance {guidance} not implemented")
 

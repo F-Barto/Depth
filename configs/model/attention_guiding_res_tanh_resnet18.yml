@@ -1,0 +1,6 @@
+includes:
+  - attention_guiding_res_sig_resnet18.yml
+
+model:
+  depth_net:
+      attention_scheme: 'res-tanh'
