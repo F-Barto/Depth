@@ -43,7 +43,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
 
     def __init__(self, argoverse_tracking_root_dir,  gt_depth_root_dir=None,
                  sparse_depth_root_dir=None, data_transform=None, data_transform_options=None,
-                 load_pose=False, split_file=None, input_channels=3):
+                 load_pose=False, split_file=None, input_channels=3, fix_cam_idx=None):
 
         """
         Parameters
@@ -105,6 +105,11 @@ class RandCamSequentialArgoverseLoader(Dataset):
         self.samples_paths = split_data['samples_paths']
         self.translation_magnitudes = split_data.get('translation_magnitudes', None)
 
+        if fix_cam_idx is not None:
+            assert fix_cam_idx < len(self.camera_list), f"{len(self.camera_list)} cameras | {self.camera_list}"
+            self.fix_cam_idx = fix_cam_idx
+
+
         assert self.split_name in ['train', 'val', 'test']
 
         self.source_views_requested = source_views_indexes is not None and len(source_views_indexes) > 0
@@ -152,7 +157,14 @@ class RandCamSequentialArgoverseLoader(Dataset):
 
     def __getitem__(self, idx):
 
-        cam_idx = randrange(len(self.camera_list))
+        if self.fix_cam_idx is not None:
+            cam_idx = self.fix_cam_idx
+        else:
+            if self.split_name == 'train':
+                cam_idx = randrange(len(self.camera_list))
+            else:
+                cam_idx = idx % len(self.camera_list)
+
         camera_name = self.camera_list[cam_idx]
 
         # self.samples_paths[idx][0] is lidar, subsequent indexes are cameras
