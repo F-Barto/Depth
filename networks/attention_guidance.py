@@ -1,12 +1,21 @@
 from torch import nn
 import torch
 
+
 class AttentionBlock(nn.Module):
-    def __init__(self, inplanes, activation_cls):
+    def __init__(self, inplanes, activation_cls, attention_scheme='res-sig'):
         super().__init__()
 
         self.activation = activation_cls(inplace=True)
-        self.sig = nn.Sigmoid()
+
+        if 'sig' in attention_scheme:
+            self.act = nn.Sigmoid()
+        elif 'tan' in attention_scheme:
+            self.act = nn.Tanh()
+        else:
+            raise ValueError(f'Last activation choice invalid either sig or tanh: {attention_scheme}')
+
+        self.attention_scheme = attention_scheme
 
         planes= inplanes//2
 
@@ -23,7 +32,7 @@ class AttentionBlock(nn.Module):
         x = self.conv_3x3(x)
         x = self.bn2(x)
 
-        out = self.sig(x)
+        out = self.act(x)
 
         return out
 
@@ -38,8 +47,14 @@ class AttentionGuidance(nn.Module):
 
         c = torch.cat([image_features, lidar_features], dim=1)
 
-        new_image_features = image_features * self.image_attention_block(c) + image_features
-        new_lidar_features = lidar_features * self.lidar_attention_block(c) + lidar_features
+        if 'res' in self.attention_scheme:
+            new_image_features = image_features * self.image_attention_block(c) + image_features
+            new_lidar_features = lidar_features * self.lidar_attention_block(c) + lidar_features
+        elif 'mult' in self.attention_scheme:
+            new_image_features = image_features * self.image_attention_block(c)
+            new_lidar_features = lidar_features * self.lidar_attention_block(c)
+        else:
+            raise ValueError(f'Attention scheme invalid either res or mult: {self.attention_scheme}')
 
         final_features = new_image_features + new_lidar_features
 
