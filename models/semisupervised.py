@@ -248,7 +248,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         if not self.training:
             return preds
         else:
-            progress = self.current_epoch / self.trainer.max_epochs
+            progress = self.current_epoch / self.hparams.trainer.max_epochs
 
             losses = []
             metrics = {}
