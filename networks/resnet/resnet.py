@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 from .blocks import conv1x1, BasicBlock, Bottleneck
-from utils.mish import MishAuto
 
 
 

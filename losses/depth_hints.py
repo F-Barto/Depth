@@ -2,15 +2,13 @@
 
 import torch
 
-
-
 from utils.image import match_scales
 from utils.depth import inv2depth
 
-from losses.supervised_loss import ReprojectedLoss
+from losses.supervised_loss import ReprojectedLoss, SupervisedLoss
 from losses.multiview_photometric_loss import MultiViewPhotometricLoss
 
-class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss, ReprojectedLoss):
+class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
 
     """
     Semi-Supervised loss for inverse depth maps.
@@ -20,8 +18,19 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss, ReprojectedLoss):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, **kwargs):
+    def __init__(self, supervised_method='reprojected', **kwargs):
         super().__init__(**kwargs)
+
+
+        if supervised_method=='reprojected'
+            self._supervised_loss = ReprojectedLoss(**kwargs)
+            self.supervised_loss = self._supervised_loss.calculate_reprojected_losses
+        else:
+            self._supervised_loss = SupervisedLoss(supervised_method=supervised_method, **kwargs)
+            self.supervised_loss = self._supervised_loss.calculate_losses
+
+        self.supervised_method = supervised_method
+
 
     def calc_depth_hints_mask(self, photometric_losses, gt_photometric_losses):
         depth_hints_masks = []
@@ -37,10 +46,13 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss, ReprojectedLoss):
 
     def calc_depth_hints_loss(self, depth_hints_masks, depths, gt_depths, K, pose, progress=0.0):
 
-        reprojected_losses = self.calculate_reprojected_losses(depths, gt_depths, K, pose,
-                                                               valid_masks=depth_hints_masks, progress=progress)
+        if self.supervised_method == 'reprojected':
+            supervised_losses = self.supervised_loss(depths, gt_depths, K, pose, valid_masks=depth_hints_masks,
+                                                     progress=progress)
+        else:
+            supervised_losses = self.supervised_loss(depths, gt_depths, valid_masks=depth_hints_masks)
 
-        depth_hints_loss = sum([reprojected_losses[i].mean() for i in range(self.n)]) / self.n
+        depth_hints_loss = sum([supervised_losses[i].mean() for i in range(self.n)]) / self.n
 
         # Store and return reduced photometric loss
         self.add_metric('depth_hints_loss', depth_hints_loss)

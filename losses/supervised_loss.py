@@ -111,18 +111,10 @@ class SupervisedLoss(LossBase):
         self.loss_func = get_loss_func(supervised_method)
         self.supervised_method = supervised_method
         self.n = supervised_num_scales
-        self.progressive_scaling = ProgressiveScaling(
-            progressive_scaling, self.n)
-
-    @property
-    def logs(self):
-        """Returns class logs."""
-        return {
-            'supervised_num_scales': self.n,
-        }
+        self.progressive_scaling = ProgressiveScaling(progressive_scaling, self.n)
 
 
-    def calculate_loss(self, inv_depths, gt_inv_depths):
+    def calculate_losses(self, inv_depths, gt_inv_depths, valid_mask=None):
         """
         Calculate the supervised loss.
 
@@ -142,14 +134,17 @@ class SupervisedLoss(LossBase):
         if self.supervised_method.startswith('sparse'):
             for i in range(self.n):
                 mask = (gt_inv_depths[i] > 0.).detach()
+
+                if valid_mask is not None:
+                    mask = mask & valid_mask
+
                 inv_depths[i] = inv_depths[i][mask]
                 gt_inv_depths[i] = gt_inv_depths[i][mask]
         # Return per-scale average loss
         return sum([self.loss_func(inv_depths[i], gt_inv_depths[i])
                     for i in range(self.n)]) / self.n
 
-    def forward(self, inv_depths, gt_inv_depth,
-                return_logs=False, progress=0.0):
+    def forward(self, inv_depths, gt_inv_depth, progress=0.0):
         """
         Calculates training supervised loss.
 
@@ -172,10 +167,9 @@ class SupervisedLoss(LossBase):
         # If using progressive scaling
         self.n = self.progressive_scaling(progress)
         # Match predicted scales for ground-truth
-        gt_inv_depths = match_scales(gt_inv_depth, inv_depths, self.n,
-                                     mode='nearest', align_corners=None)
+        gt_inv_depths = match_scales(gt_inv_depth, inv_depths, self.n, mode='nearest')
         # Calculate and store supervised loss
-        loss = self.calculate_loss(inv_depths, gt_inv_depths)
+        loss = self.calculate_losses(inv_depths, gt_inv_depths)
         self.add_metric('supervised_loss', loss)
         # Return losses and metrics
         return {
@@ -333,7 +327,7 @@ class ReprojectedLoss(LossBase):
         """
 
         # NOTE/TODO: here we compute loss for each pose but it is useless as no rgb image is used
-        # jsut take one pose (e.g., the first one)
+        # just take one pose (e.g., the first one)
 
         reprojected_losses = [[] for _ in range(self.n)]
         # Calculate and store supervised loss for each scale

@@ -14,6 +14,7 @@ import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning import _logger as terminal_logger
+from pytorch_lightning.core.decorators import auto_move_data
 
 
 from networks.packnet.packnet import PackNet01
@@ -209,6 +210,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
             'depth': depth
         }
 
+    @auto_move_data
     def forward(self, batch):
         """
         Processes a batch.

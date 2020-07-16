@@ -91,7 +91,6 @@ class ResnetEncoder(nn.Module):
 
     def forward(self, input_image):
         self.features = []
-        #x = (input_image - 0.45) / 0.225 # where does this comes from ?
         x = self.encoder.conv1(input_image)
         if not self.encoder.no_first_norm:
             x = self.encoder.bn1(x)

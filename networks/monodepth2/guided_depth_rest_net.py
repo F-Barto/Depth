@@ -1,8 +1,6 @@
-import torch
 import torch.nn as nn
 
 from functools import partial
-from collections import OrderedDict
 
 from networks.monodepth2.layers.resnet_encoder import ResnetEncoder
 from networks.monodepth2.layers.depth_decoder import DepthDecoder

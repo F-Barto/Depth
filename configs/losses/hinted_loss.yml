@@ -1,5 +1,6 @@
 losses:
     HintedMultiViewPhotometricLoss:
+      supervised_method: reprojected
       num_scales: 4                   # Number of inverse depth scales to use
       ssim_loss_weight: 0.85          # SSIM loss weight
       occ_reg_weight: 0.1             # Occlusion regularizer loss weight
