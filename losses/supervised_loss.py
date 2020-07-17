@@ -10,7 +10,7 @@ from utils.image import match_scales
 from utils.camera import Camera
 from utils.multiview_warping_and_projection import reconstruct
 from losses.loss_base import LossBase, ProgressiveScaling
-from utils.depth import inv2depth
+from utils.depth import inv2depth, depth2inv
 ########################################################################################################################
 
 class BerHuLoss(nn.Module):
@@ -114,7 +114,7 @@ class SupervisedLoss(LossBase):
         self.progressive_scaling = ProgressiveScaling(progressive_scaling, self.n)
 
 
-    def calculate_losses(self, inv_depths, gt_inv_depths, valid_masks=None):
+    def calculate_losses(self, inv_depths, gt_depths, valid_masks=None):
         """
         Calculate the supervised loss.
 
@@ -132,6 +132,8 @@ class SupervisedLoss(LossBase):
         """
 
         losses = []
+
+        gt_inv_depths = [inv2depth(gt_depths[i]) for i in range(self.n)]
 
         # If using a sparse loss, mask invalid pixels for all scales
         if self.supervised_method.startswith('sparse'):
