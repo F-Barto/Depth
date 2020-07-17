@@ -130,6 +130,9 @@ class SupervisedLoss(LossBase):
         loss : torch.Tensor [1]
             Average supervised loss for all scales
         """
+
+        losses = []
+
         # If using a sparse loss, mask invalid pixels for all scales
         if self.supervised_method.startswith('sparse'):
             for i in range(self.n):
@@ -140,9 +143,12 @@ class SupervisedLoss(LossBase):
 
                 inv_depths[i] = inv_depths[i][mask]
                 gt_inv_depths[i] = gt_inv_depths[i][mask]
+                loss = self.loss_func(inv_depths[i], gt_inv_depths[i])
+                losses.append(loss)
+
+
         # Return per-scale average loss
-        return sum([self.loss_func(inv_depths[i], gt_inv_depths[i])
-                    for i in range(self.n)]) / self.n
+        return  losses
 
     def forward(self, inv_depths, gt_inv_depth, progress=0.0):
         """
@@ -166,10 +172,13 @@ class SupervisedLoss(LossBase):
         """
         # If using progressive scaling
         self.n = self.progressive_scaling(progress)
+
         # Match predicted scales for ground-truth
         gt_inv_depths = match_scales(gt_inv_depth, inv_depths, self.n, mode='nearest')
         # Calculate and store supervised loss
-        loss = self.calculate_losses(inv_depths, gt_inv_depths)
+        losses = self.calculate_losses(inv_depths, gt_inv_depths)
+        loss = sum([losses[i] for i in range(self.n)]) / self.n
+
         self.add_metric('supervised_loss', loss)
         # Return losses and metrics
         return {
@@ -305,7 +314,7 @@ class ReprojectedLoss(LossBase):
         return losses
 
 
-    def forward(self, inv_depths, gt_depth, K, poses,progress=0.0):
+    def forward(self, inv_depths, gt_depth, K, poses, progress=0.0):
         """
         Calculates training supervised loss.
 
@@ -341,8 +350,8 @@ class ReprojectedLoss(LossBase):
                 reprojected_losses[i].append(losses[i].mean().unsqueeze(0))
 
         # Return per-scale reprojected loss mean
-        reprojected_loss = sum([torch.cat(reprojected_losses[i], 0).min(0, True)[0].mean() for i in range(self.n)])
-        reprojected_loss /= self.n
+        reprojected_loss = sum([torch.cat(reprojected_losses[i], 0).min(0, True)[0].mean()
+                                for i in range(self.n)]) / self.n
 
         self.add_metric('reprojected_loss', reprojected_loss)
         # Return losses and metrics
