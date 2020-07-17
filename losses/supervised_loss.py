@@ -114,7 +114,7 @@ class SupervisedLoss(LossBase):
         self.progressive_scaling = ProgressiveScaling(progressive_scaling, self.n)
 
 
-    def calculate_losses(self, inv_depths, gt_inv_depths, valid_mask=None):
+    def calculate_losses(self, inv_depths, gt_inv_depths, valid_masks=None):
         """
         Calculate the supervised loss.
 
@@ -135,8 +135,8 @@ class SupervisedLoss(LossBase):
             for i in range(self.n):
                 mask = (gt_inv_depths[i] > 0.).detach()
 
-                if valid_mask is not None:
-                    mask = mask & valid_mask
+                if valid_masks is not None:
+                    mask = mask & valid_masks[i]
 
                 inv_depths[i] = inv_depths[i][mask]
                 gt_inv_depths[i] = gt_inv_depths[i][mask]
