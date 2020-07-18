@@ -24,7 +24,8 @@ class GuidedDepthResNet(nn.Module):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac', attention_scheme='res-sig'):
+    def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac', attention_scheme='res-sig',
+                 **kwargs):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
@@ -54,7 +55,7 @@ class GuidedDepthResNet(nn.Module):
             else:
                 print(f"guidance {guidance} not implemented")
 
-        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc, activation=activation_cls)
+        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc, activation=activation_cls, **kwargs)
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=100.0)
 

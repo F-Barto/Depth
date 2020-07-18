@@ -1,0 +1,10 @@
+includes:
+  - attention_guiding_res_sig_resnet18.yml
+
+model:
+  depth_net:
+      attention_scheme: 'concat-res-sig'
+      upsample_mode: 'pixelshuffle'
+      concat_skips: True
+      blur: True
+      blur_at_end: True

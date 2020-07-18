@@ -5,6 +5,7 @@ model:
     options:
       guidance: pac
       num_layers: 18      # choices=[18, 34, 50, 101, 152]
+      two_encoder: True
   pose_net:
     name: monodepth
     options:

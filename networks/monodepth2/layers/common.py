@@ -5,6 +5,7 @@
 
 from __future__ import absolute_import, division, print_function
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -72,7 +73,48 @@ class Conv3x3(nn.Module):
         return out
 
 
-def upsample(x):
+def nearest_upsample(x):
     """Upsample input tensor by a factor of 2
     """
     return F.interpolate(x, scale_factor=2, mode="nearest")
+
+def icnr(x, scale=2, init=nn.init.kaiming_normal_):
+    """
+    ICNR init of `x`, with `scale` and `init` function.
+    - https://arxiv.org/ftp/arxiv/papers/1707/1707.02937.pdf
+    """
+    ni,nf,h,w = x.shape
+    ni2 = int(ni/(scale**2))
+    k = init(torch.zeros([ni2,nf,h,w])).transpose(0, 1)
+    k = k.contiguous().view(ni2, nf, -1)
+    k = k.repeat(1, 1, scale**2)
+    k = k.contiguous().view([nf,ni,h,w]).transpose(0, 1)
+    x.data.copy_(k)
+
+class SubPixelUpsamplingBlock(nn.Module):
+    "Upsample by `scale` from `ni` filters to `nf` (default `ni`), using `nn.PixelShuffle`, `icnr` init, and `weight_norm`."
+    "useful conversation: https://twitter.com/jeremyphoward/status/1066429286771580928"
+    def __init__(self, in_channels, out_channels=None, upscale_factor=2, blur=True):
+        out_channels = in_channels if out_channels is None else out_channels
+
+        self.conv = nn.Conv2d(in_channels, out_channels * (upscale_factor * upscale_factor), kernel_size=3, stride=1,
+                               padding=1, bias=True)
+
+        icnr(self.conv3.weight)
+
+        self.pixel_shuffle = nn.PixelShuffle(upscale_factor)
+        # Blurring over (h*w) kernel
+        # "Super-Resolution using Convolutional Neural Networks without Any Checkerboard Artifacts"
+        # - https://arxiv.org/abs/1806.02658
+        self.pad = nn.ReplicationPad2d((1,0,1,0))
+        self.blur = nn.AvgPool2d(2, stride=1)
+        self.do_blur = blur
+
+    def forward(self,x):
+
+        x = self.conv(x)
+        x = self.pixel_shuffle(x)
+        if self.do_blur:
+            x = self.pad(x)
+            x = self.blur(x)
+        return x
