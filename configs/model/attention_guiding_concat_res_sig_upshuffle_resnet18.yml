@@ -3,6 +3,7 @@ includes:
 
 model:
   depth_net:
+    options:
       attention_scheme: 'concat-res-sig'
       upsample_mode: 'pixelshuffle'
       concat_skips: True

@@ -3,4 +3,5 @@ includes:
 
 model:
   depth_net:
+    options:
       attention_scheme: 'res-tanh'
