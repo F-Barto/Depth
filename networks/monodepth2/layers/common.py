@@ -101,7 +101,7 @@ class SubPixelUpsamplingBlock(nn.Module):
         self.conv = nn.Conv2d(in_channels, out_channels * (upscale_factor * upscale_factor), kernel_size=3, stride=1,
                                padding=1, bias=True)
 
-        icnr(self.conv3.weight)
+        icnr(self.conv.weight)
 
         self.pixel_shuffle = nn.PixelShuffle(upscale_factor)
         # Blurring over (h*w) kernel
