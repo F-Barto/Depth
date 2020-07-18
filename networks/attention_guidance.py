@@ -41,13 +41,14 @@ class AttentionGuidance(nn.Module):
     def __init__(self, inplanes, activation_cls, attention_scheme='res-sig'):
         super().__init__()
 
-        if 'concat' in self.attention_scheme:
+        if 'concat' in attention_scheme:
             self.attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
         else:
             self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
             self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
 
         self.attention_scheme = attention_scheme
+
 
     def fuse_features(self, original_features, attentive_masks):
         if 'res' in self.attention_scheme:
