@@ -95,6 +95,7 @@ class SubPixelUpsamplingBlock(nn.Module):
     "Upsample by `scale` from `ni` filters to `nf` (default `ni`), using `nn.PixelShuffle`, `icnr` init, and `weight_norm`."
     "useful conversation: https://twitter.com/jeremyphoward/status/1066429286771580928"
     def __init__(self, in_channels, out_channels=None, upscale_factor=2, blur=True):
+        super(SubPixelUpsamplingBlock, self).__init__()
         out_channels = in_channels if out_channels is None else out_channels
 
         self.conv = nn.Conv2d(in_channels, out_channels * (upscale_factor * upscale_factor), kernel_size=3, stride=1,
