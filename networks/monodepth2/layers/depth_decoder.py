@@ -73,11 +73,6 @@ class DepthDecoder(nn.Module):
         x = input_features[-1]
         for i in range(4, -1, -1):
 
-            print()
-            print(f"input_features[- 1]: {input_features[i - 1].shape}")
-            print(f"x {i}: {x.shape}")
-            print()
-
             x = self.convs[("upconv", i, 0)](x)
 
             if self.upsample_mode == 'pixelshuffle':
