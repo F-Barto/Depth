@@ -70,6 +70,10 @@ class GuidedDepthResNet(nn.Module):
         self.guided_features = []
         for i in range(len(self.num_ch_enc)):
             guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i])
+            print()
+            print(f"cam_features {i}: {cam_features.shape}")
+            print(f"guided_feature {i}: {guided_feature.shape}")
+            print()
             self.guided_features.append(guided_feature)
 
         x = self.decoder(self.guided_features)
