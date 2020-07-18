@@ -36,7 +36,13 @@ class DepthDecoder(nn.Module):
         self.convs = OrderedDict()
         for i in range(4, -1, -1):
             # upconv_0, pre upsampling
-            num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
+            if i == 4:
+                num_ch_in = self.num_ch_enc[-1]
+                if two_encoder and concat_skips:
+                    num_ch_in += self.num_ch_enc[-1]
+            else:
+                num_ch_in = self.num_ch_dec[i + 1]
+
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out, activation)
 
@@ -66,6 +72,12 @@ class DepthDecoder(nn.Module):
         # decoder
         x = input_features[-1]
         for i in range(4, -1, -1):
+
+            print()
+            print(f"input_features[- 1]: {input_features[i - 1].shape}")
+            print(f"x {i}: {x.shape}")
+            print()
+
             x = self.convs[("upconv", i, 0)](x)
 
             if self.upsample_mode == 'pixelshuffle':
