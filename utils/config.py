@@ -42,13 +42,13 @@ def load_defaults(config_root, defaults):
 
         try:
             yml_filepath = get_yml_filepath(config_root, relative_conf_dir, yml_filename)
+            # ignore_default=True to prevents defaults to be recursive
+            current_default_config = load_yaml(yml_filepath, config_root, ignore_default=True)
+            defaults_config = OmegaConf.merge(defaults_config, current_default_config)
         except FileNotFoundError as e:
             print(f'Tried to load default {relative_conf_dir}: {yml_filename} ...')
             print(e)
 
-        # ignore_default=True to prevents defaults to be recursive
-        current_default_config = load_yaml(yml_filepath, config_root, ignore_default=True)
-        defaults_config = OmegaConf.merge(defaults_config, current_default_config)
     return defaults_config
 
 def apply_defaults_overrides(overrides, defaults):
