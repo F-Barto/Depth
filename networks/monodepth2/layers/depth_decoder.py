@@ -15,7 +15,7 @@ from .common import ConvBlock, Conv3x3, nearest_upsample, SubPixelUpsamplingBloc
 
 class DepthDecoder(nn.Module):
     def __init__(self, num_ch_enc, activation, scales=range(4), num_output_channels=1, use_skips=True,
-                 concat_skips=False, upsample_mode='nearest', blur=True, blur_at_end=True):
+                 concat_skips=True, upsample_mode='nearest', blur=True, blur_at_end=True):
         super(DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels

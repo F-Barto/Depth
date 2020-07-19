@@ -6,6 +6,5 @@ model:
     options:
       attention_scheme: 'concat-res-sig'
       upsample_mode: 'pixelshuffle'
-      concat_skips: True
       blur: True
       blur_at_end: True
