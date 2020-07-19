@@ -15,7 +15,7 @@ from .common import ConvBlock, Conv3x3, nearest_upsample, SubPixelUpsamplingBloc
 
 class DepthDecoder(nn.Module):
     def __init__(self, num_ch_enc, activation, scales=range(4), num_output_channels=1, use_skips=True,
-                 concat_skips=False, two_encoder=False, upsample_mode='nearest', blur=True, blur_at_end=True):
+                 concat_skips=False, upsample_mode='nearest', blur=True, blur_at_end=True):
         super(DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels
@@ -36,13 +36,7 @@ class DepthDecoder(nn.Module):
         self.convs = OrderedDict()
         for i in range(4, -1, -1):
             # upconv_0, pre upsampling
-            if i == 4:
-                num_ch_in = self.num_ch_enc[-1]
-                if two_encoder and concat_skips:
-                    num_ch_in += self.num_ch_enc[-1]
-            else:
-                num_ch_in = self.num_ch_dec[i + 1]
-
+            num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out, activation)
 
@@ -54,8 +48,6 @@ class DepthDecoder(nn.Module):
             num_ch_in = self.num_ch_dec[i]
             if self.use_skips and i > 0 and self.concat_skips:
                 num_ch_in += self.num_ch_enc[i - 1]
-                if two_encoder:
-                    num_ch_in += self.num_ch_enc[i - 1]
 
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 1)] = ConvBlock(num_ch_in, num_ch_out, activation)

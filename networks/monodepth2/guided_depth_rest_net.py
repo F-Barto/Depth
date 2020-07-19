@@ -41,11 +41,13 @@ class GuidedDepthResNet(nn.Module):
                                            activation=activation_cls, no_first_norm=True)
 
         self.num_ch_enc = self.encoder.num_ch_enc
+        skip_features_factor = 2 if 'concat' in attention_scheme else 1
+        self.num_ch_skips = [skip_features_factor * num_ch for num_ch in self.num_ch_enc]
 
         # at each resblock fuse with guidance the features of both encoders
         self.guidances = nn.ModuleDict()
         for i in range(len(self.num_ch_enc)):
-            # upconv_0
+
             num_ch =  self.num_ch_enc[i]
 
             if guidance == 'pac':
@@ -55,7 +57,7 @@ class GuidedDepthResNet(nn.Module):
             else:
                 print(f"guidance {guidance} not implemented")
 
-        self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc, activation=activation_cls, **kwargs)
+        self.decoder = DepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=100.0)
 
