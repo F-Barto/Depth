@@ -49,11 +49,11 @@ def main(project_config, hparams, resume=False):
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     experiment_output_dir = base_output_dir / 'outputs' / project_config.experiment_name
+    latest_ckpt = experiment_output_dir / 'version_0/latest.ckpt'
 
-    if resume:
-        latest_ckpt = str(experiment_output_dir / 'version_0/latest.ckpt')
-        model.load_from_checkpoint(latest_ckpt)
-        trainer = Trainer(resume_from_checkpoint=latest_ckpt)
+    if resume and latest_ckpt.exists():
+        model.load_from_checkpoint(str(latest_ckpt))
+        trainer = Trainer(resume_from_checkpoint=str(latest_ckpt))
         trainer.fit(model)
         trainer.test(model)
 
