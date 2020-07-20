@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     besteffort = "-t besteffort" if args.best_effort else ""
     idempotent = "-t idempotent" if args.idempotent else ""
-    resume = "-r" if args.best_effort and args.idempotent else ""
+    resume = "--resume" if args.best_effort and args.idempotent else ""
 
     # SIGINT (2) -> keyboard interrupt signal used by pytorch-lightning for graceful exit
     oar_specifics = f'oarsub {besteffort} {idempotent} --checkpoint 120 --signal 2 ' + \
@@ -29,9 +29,9 @@ if __name__ == '__main__':
 
 
     os.system(oar_specifics +
-              '"./oar_submit_job.sh ' +
+              f'"./oar_submit_job.sh {resume} ' +
               f'-cr {CONFIG_DIR} ' +
               f'-pf {args.project_config_file} -po \'{args.project_config_overrides}\' ' +
-              f'-mf {args.model_config_file} -mo \'{args.model_config_overrides}\'" ' +
-              resume)
+              f'-mf {args.model_config_file} -mo \'{args.model_config_overrides}\'"'
+              )
 

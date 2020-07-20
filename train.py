@@ -157,7 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--project_config_overrides', '-po', type=str)
     parser.add_argument('--model_config_file', '-mf', type=str, required=True)
     parser.add_argument('--model_config_overrides', '-mo', type=str)
-    parser.add_argument('--resume', '-r', action='store_true')
+    parser.add_argument('--resume', action='store_true')
     # parse params
     args = parser.parse_args()
 
