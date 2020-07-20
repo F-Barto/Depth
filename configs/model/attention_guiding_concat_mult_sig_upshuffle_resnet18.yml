@@ -4,7 +4,7 @@ includes:
 model:
   depth_net:
     options:
-      attention_scheme: 'concat-res-sig'
+      attention_scheme: 'concat-mult-sig'
       upsample_mode: 'pixelshuffle'
       blur: True
       blur_at_end: True
