@@ -28,7 +28,7 @@ def set_random_seed(seed):
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
-def main(project_config, hparams):
+def main(project_config, hparams, resume=False):
     torch.manual_seed(0)
     np.random.seed(0)
 
@@ -50,93 +50,104 @@ def main(project_config, hparams):
 
     experiment_output_dir = base_output_dir / 'outputs' / project_config.experiment_name
 
-    assert hparams.logger in ['wandb', 'tensorboard']
+    if resume:
+        latest_ckpt = str(experiment_output_dir / 'version_0/latest.ckpt')
+        model.load_from_checkpoint(latest_ckpt)
+        trainer = Trainer(resume_from_checkpoint=latest_ckpt)
+        trainer.fit(model)
+        trainer.test(model)
 
-    if hparams.logger == 'tensorboard':
-        experiment_logger = TensorBoardLogger(
-            save_dir=logs_dir,
-            name=project_config.experiment_name
+    else:
+
+        assert hparams.logger in ['wandb', 'tensorboard']
+
+        if hparams.logger == 'tensorboard':
+            experiment_logger = TensorBoardLogger(
+                save_dir=logs_dir,
+                name=project_config.experiment_name
+            )
+
+            run_output_dir = experiment_output_dir / f'version_{experiment_logger.version}'
+
+        elif hparams.logger == 'wandb':
+
+            list_of_tags = [
+                f"{hparams.model.depth_net.name} DepthNet",
+                f"{hparams.model.pose_net.name} PoseNet",
+                hparams.optimizer.name,
+                hparams.scheduler.name,
+                {1: 'gray', 3: 'rgb'}[hparams.input_channels],
+                f"train-{shape_format(hparams.datasets.train.data_transform_options.image_shape)}",
+                f"val-{shape_format(hparams.datasets.val.data_transform_options.image_shape)}",
+                f"test-{shape_format(hparams.datasets.test.data_transform_options.image_shape)}",
+            ]
+            if project_config.mixed_precision:
+                list_of_tags.append('mixed_precision')
+
+            losses = list(hparams.losses.keys())
+            if 'supervised_loss_weight' in losses:
+                losses.remove('supervised_loss_weight')
+            list_of_tags += losses
+
+            experiment_logger = WandbLogger(
+                project = project_config.project_name,
+                save_dir=logs_dir, # the path to a directory where artifacts will be written
+                log_model=True,
+                tags=list_of_tags
+            )
+            #wandb_logger.watch(model, log='all', log_freq=5000) # watch model's gradients and params
+
+            run_output_dir = experiment_output_dir / f'version_{experiment_logger.experiment.id}'
+
+        else:
+            run_output_dir = experiment_output_dir / 'no_version_system'
+
+        run_output_dir.mkdir(parents=True, exist_ok=True)
+        run_output_dir = str(run_output_dir)
+
+        checkpoint_callback = ModelCheckpoint(
+            filepath=run_output_dir + '/{epoch:04d}-{val-rmse_log:.5f}', # saves a file like: my/path/epoch=2-abs_rel=0.0115.ckpt
+            save_top_k=3,
+            verbose=True,
+            monitor='val-rmse_log',
+            mode='min',
         )
 
-        run_output_dir = experiment_output_dir / f'version_{experiment_logger.version}'
+        lr_logger = LearningRateLogger()
 
-    elif hparams.logger == 'wandb':
 
-        list_of_tags = [
-            f"{hparams.model.depth_net.name} DepthNet",
-            f"{hparams.model.pose_net.name} PoseNet",
-            hparams.optimizer.name,
-            hparams.scheduler.name,
-            {1: 'gray', 3: 'rgb'}[hparams.input_channels],
-            f"train-{shape_format(hparams.datasets.train.data_transform_options.image_shape)}",
-            f"val-{shape_format(hparams.datasets.val.data_transform_options.image_shape)}",
-            f"test-{shape_format(hparams.datasets.test.data_transform_options.image_shape)}",
-        ]
         if project_config.mixed_precision:
-            list_of_tags.append('mixed_precision')
+            amp_level='01'
+            precision=16
 
-        losses = list(hparams.losses.keys())
-        if 'supervised_loss_weight' in losses:
-            losses.remove('supervised_loss_weight')
-        list_of_tags += losses
+        if project_config.gpus > 1:
+            distributed_backend = 'ddp'
+        else:
+            distributed_backend = None
 
-        experiment_logger = WandbLogger(
-            project = project_config.project_name,
-            save_dir=logs_dir, # the path to a directory where artifacts will be written
-            log_model=True,
-            tags=list_of_tags
+        profiler = False
+        if project_config.fast_dev_run:
+            from pytorch_lightning.profiler import AdvancedProfiler
+            profiler = AdvancedProfiler(output_filename='./profiler.log')
+
+
+        trainer = Trainer(
+            gpus=project_config.gpus,
+            distributed_backend=distributed_backend,
+            num_nodes =project_config.nodes,
+            checkpoint_callback=checkpoint_callback,
+            callbacks=[lr_logger],
+            logger=experiment_logger,
+            fast_dev_run=project_config.fast_dev_run,
+            profiler=profiler,
+            early_stop_callback=False,
+            #amp_level='O1',
+            #precision=16,
+            **hparams.trainer
         )
-        #wandb_logger.watch(model, log='all', log_freq=5000) # watch model's gradients and params
+        trainer.fit(model)
+        trainer.test(model)
 
-        run_output_dir = experiment_output_dir / f'version_{experiment_logger.experiment.id}'
-
-    else:
-        run_output_dir = experiment_output_dir / 'no_version_system'
-
-    run_output_dir.mkdir(parents=True, exist_ok=True)
-    run_output_dir = str(run_output_dir)
-
-    checkpoint_callback = ModelCheckpoint(
-        filepath=run_output_dir + '/{epoch:04d}-{val-rmse_log:.5f}', # saves a file like: my/path/epoch=2-abs_rel=0.0115.ckpt
-        save_top_k=3,
-        verbose=True,
-        monitor='val-rmse_log',
-        mode='min',
-    )
-
-    lr_logger = LearningRateLogger()
-
-
-    if project_config.mixed_precision:
-        amp_level='01'
-        precision=16
-
-    if project_config.gpus > 1:
-        distributed_backend = 'ddp'
-    else:
-        distributed_backend = None
-
-    profiler = False
-    if project_config.fast_dev_run:
-        from pytorch_lightning.profiler import AdvancedProfiler
-        profiler = AdvancedProfiler(output_filename='./profiler.log')
-
-    trainer = Trainer(
-        gpus=project_config.gpus,
-        distributed_backend=distributed_backend,
-        num_nodes =project_config.nodes,
-        checkpoint_callback=checkpoint_callback,
-        callbacks=[lr_logger],
-        logger=experiment_logger,
-        fast_dev_run=project_config.fast_dev_run,
-        profiler=profiler,
-        early_stop_callback=False,
-        #amp_level='O1',
-        #precision=16,
-        **hparams.trainer
-    )
-    trainer.fit(model)
-    trainer.test(model)
 
 
 if __name__ == '__main__':
@@ -146,6 +157,7 @@ if __name__ == '__main__':
     parser.add_argument('--project_config_overrides', '-po', type=str)
     parser.add_argument('--model_config_file', '-mf', type=str, required=True)
     parser.add_argument('--model_config_overrides', '-mo', type=str)
+    parser.add_argument('--resume', '-r', action='store_true')
     # parse params
     args = parser.parse_args()
 
@@ -183,4 +195,4 @@ if __name__ == '__main__':
 
     set_random_seed(hparams.seed)
 
-    main(project_config, hparams)
+    main(project_config, hparams, args.resume)

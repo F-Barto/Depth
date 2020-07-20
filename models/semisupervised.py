@@ -467,6 +467,9 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         return results
 
+    def on_train_end(self):
+        self.trainer.checkpoint_callback._save_model(filepath=self.trainer.checkpoint_callback.dirpath+'/latest.ckpt')
+
 
     def configure_optimizers(self):
         """
