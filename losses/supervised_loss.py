@@ -150,9 +150,9 @@ class SupervisedLoss(LossBase):
 
 
         # Return per-scale average loss
-        return  losses
+        return losses
 
-    def forward(self, inv_depths, gt_inv_depth, progress=0.0):
+    def forward(self, inv_depths, gt_depth, progress=0.0):
         """
         Calculates training supervised loss.
 
@@ -176,9 +176,9 @@ class SupervisedLoss(LossBase):
         self.n = self.progressive_scaling(progress)
 
         # Match predicted scales for ground-truth
-        gt_inv_depths = match_scales(gt_inv_depth, inv_depths, self.n, mode='nearest')
+        gt_depths = match_scales(gt_depth, inv_depths, self.n, mode='nearest')
         # Calculate and store supervised loss
-        losses = self.calculate_losses(inv_depths, gt_inv_depths)
+        losses = self.calculate_losses(inv_depths, gt_depths)
         loss = sum([losses[i] for i in range(self.n)]) / self.n
 
         self.add_metric('supervised_loss', loss)

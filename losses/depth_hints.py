@@ -22,7 +22,7 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         super().__init__(**kwargs)
 
 
-        if supervised_method=='reprojected':
+        if supervised_method == 'reprojected':
             self._supervised_loss = ReprojectedLoss(**kwargs)
             self.supervised_loss = self._supervised_loss.calculate_reprojected_losses
         else:
