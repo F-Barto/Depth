@@ -22,7 +22,9 @@ if __name__ == '__main__':
     idempotent = "-t idempotent" if args.idempotent else ""
     resume = "-r" if args.best_effort and args.idempotent else ""
 
-    oar_specifics = f'oarsub {besteffort} {idempotent} -p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\')" ' + \
+    # SIGINT (2) -> keyboard interrupt signal used by pytorch-lightning for graceful exit
+    oar_specifics = f'oarsub {besteffort} {idempotent} --checkpoint 120 --signal 2 ' + \
+                    f'-p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\')" ' + \
                     f'-l "walltime={args.wall_time}:0:0" -n "{args.run_name}" '
 
 
