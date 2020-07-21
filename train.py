@@ -162,7 +162,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     import os
-    print("OAR:", os.environ['OAR_JOB_ID'])
+    print("OAR_JOB_ID:", os.environ['OAR_JOB_ID'])
 
     print()
     print('=' * 30, " PROJECT CONFIG", '=' * 30)
@@ -178,12 +178,11 @@ if __name__ == '__main__':
     print(project_config.pretty())
 
     print()
-    print('=' * 30, " PROJECT CONFIG", '=' * 30)
+    print('=' * 30, " MODEL CONFIG", '=' * 30)
     mo = list(args.model_config_overrides.split())
     print()
     print('-' * 30, " overrides", '-' * 30)
     print(mo)
-
 
     hparams = load_yaml(args.model_config_file, args.config_root, overrides= mo)
     print()

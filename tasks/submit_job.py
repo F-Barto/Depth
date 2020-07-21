@@ -22,10 +22,11 @@ if __name__ == '__main__':
     besteffort = "-t besteffort" if args.best_effort else ""
     idempotent = "-t idempotent" if args.idempotent else ""
     resume = "--resume" if args.best_effort and args.idempotent else ""
+    host = f"and (host=\'{args.gpuhost}\')" if args.gpuhost != '' else ''
 
     # SIGINT (2) -> keyboard interrupt signal used by pytorch-lightning for graceful exit
     oar_specifics = f'oarsub {besteffort} {idempotent} --checkpoint 120 --signal 2 ' + \
-                    f'-p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\') and (host=\'{args.gpuhost}\')" ' + \
+                    f'-p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\') {host}" ' + \
                     f'-l "walltime={args.wall_time}:0:0" -n "{args.run_name}" '
 
 
