@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # SIGINT (2) -> keyboard interrupt signal used by pytorch-lightning for graceful exit
     oar_specifics = f'oarsub {besteffort} {idempotent} --checkpoint 120 --signal 2 ' + \
-                    f'-p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\') and (host={args.gpuhost})" ' + \
+                    f'-p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\') and (host=\'{args.gpuhost}\')" ' + \
                     f'-l "walltime={args.wall_time}:0:0" -n "{args.run_name}" '
 
 
