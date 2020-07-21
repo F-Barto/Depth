@@ -11,7 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_config_overrides', '-mo', type=str)
     parser.add_argument('--wall_time', '-wt', type=int, default=48)
     parser.add_argument('--gpumem', type=int, default=11000)
-    parser.add_argument('--gpuhost', type=int, default='')
+    parser.add_argument('--gpuhost', type=str, default='')
     parser.add_argument('--run_name', '-n', type=str, default='')
     parser.add_argument('--best_effort', '-b', action='store_true')
     parser.add_argument('--idempotent', '-i', action='store_true')
