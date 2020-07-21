@@ -2,7 +2,7 @@
 
 # Inria cluster specifics
 source ~/.bashrc
-source gpu_setVisibleDevices.sh
+. gpu_setVisibleDevices.sh
 
 conda activate Depth_env
 

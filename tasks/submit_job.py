@@ -11,6 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_config_overrides', '-mo', type=str)
     parser.add_argument('--wall_time', '-wt', type=int, default=48)
     parser.add_argument('--gpumem', type=int, default=11000)
+    parser.add_argument('--gpuhost', type=int, default='')
     parser.add_argument('--run_name', '-n', type=str, default='')
     parser.add_argument('--best_effort', '-b', action='store_true')
     parser.add_argument('--idempotent', '-i', action='store_true')
@@ -24,7 +25,7 @@ if __name__ == '__main__':
 
     # SIGINT (2) -> keyboard interrupt signal used by pytorch-lightning for graceful exit
     oar_specifics = f'oarsub {besteffort} {idempotent} --checkpoint 120 --signal 2 ' + \
-                    f'-p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\')" ' + \
+                    f'-p "(gpumem > {args.gpumem}) and (gpumodel!=\'k40m\') and (gpuhost={args.gpuhost})" ' + \
                     f'-l "walltime={args.wall_time}:0:0" -n "{args.run_name}" '
 
 
