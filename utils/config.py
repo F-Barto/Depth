@@ -146,7 +146,6 @@ def load_yaml(yaml_filepath, config_root, ignore_default=False, overrides=None):
     yaml_filepath = Path(yaml_filepath)
 
     config = OmegaConf.load(yaml_filepath.absolute())
-    OmegaConf.set_struct(config, True)
 
     config = parse_includes(config, yaml_filepath, config_root)
 
