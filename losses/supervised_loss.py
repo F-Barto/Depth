@@ -143,9 +143,9 @@ class SupervisedLoss(LossBase):
                 if valid_masks is not None:
                     mask = mask & valid_masks[i]
 
-                inv_depths[i] = inv_depths[i][mask]
-                gt_inv_depths[i] = gt_inv_depths[i][mask]
-                loss = self.loss_func(inv_depths[i], gt_inv_depths[i])
+                masked_inv_depth = inv_depths[i][mask]
+                masked_gt_inv_depth = gt_inv_depths[i][mask]
+                loss = self.loss_func(masked_inv_depth, masked_gt_inv_depth)
                 losses.append(loss)
 
 
