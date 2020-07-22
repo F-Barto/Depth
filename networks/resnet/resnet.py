@@ -29,7 +29,7 @@ class ResNet(nn.Module):
         self.groups = groups
         self.base_width = width_per_group
         self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+                               bias=self.no_first_norm)
         if not self.no_first_norm:
             self.bn1 = norm_layer(self.inplanes)
         self.activation = activation(inplace=True)
