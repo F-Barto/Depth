@@ -23,7 +23,8 @@ class DepthDecoder(nn.Module):
         self.concat_skips = concat_skips
         self.scales = scales
 
-        if upsample_mode not in ['nearest', 'pixelshuffle']:
+        available_upmodes = ['nearest', 'pixelshuffle', 'res-pixelshuffle']
+        if upsample_mode not in available_upmodes:
             raise ValueError(f"upsample_mode must be in ['nearest', 'pixelshuffle'] | upsample_mode={upsample_mode}")
         self.upsample_mode = upsample_mode
 
@@ -40,7 +41,7 @@ class DepthDecoder(nn.Module):
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out, activation)
 
-            if self.upsample_mode == 'pixelshuffle':
+            if 'pixelshuffle' in self.upsample_mode:
                 do_blur = blur and (i != 4 or blur_at_end)
                 self.convs[("pixelshuffle", i)] = SubPixelUpsamplingBlock(num_ch_out, upscale_factor=2, blur=do_blur)
 
@@ -69,6 +70,8 @@ class DepthDecoder(nn.Module):
 
             if self.upsample_mode == 'pixelshuffle':
                 x = self.convs[("pixelshuffle", i)](x)
+            if self.upsample_mode == 'res-pixelshuffle':
+                x = self.convs[("pixelshuffle", i)](x) + nearest_upsample(x)
             if self.upsample_mode == 'nearest':
                 x = nearest_upsample(x)
 
