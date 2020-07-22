@@ -41,7 +41,9 @@ class AttentionGuidance(nn.Module):
     def __init__(self, inplanes, activation_cls, attention_scheme='res-sig'):
         super().__init__()
 
-        if 'concat' in attention_scheme:
+        if 'concat' == attention_scheme:
+            pass
+        elif 'concat' in attention_scheme:
             self.attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
         else:
             self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
@@ -64,7 +66,9 @@ class AttentionGuidance(nn.Module):
 
         c = torch.cat([image_features, lidar_features], dim=1)
 
-        if 'concat' in self.attention_scheme:
+        if 'concat' == self.attention_scheme:
+            final_features = c
+        elif 'concat' in self.attention_scheme:
             attentive_mask = self.attention_block(c)
             final_features = self.fuse_features([c], [attentive_mask])
         else:
