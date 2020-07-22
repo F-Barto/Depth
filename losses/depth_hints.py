@@ -44,13 +44,13 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
 
         return depth_hints_masks
 
-    def calc_depth_hints_loss(self, depth_hints_masks, depths, gt_depths, K, pose, progress=0.0):
+    def calc_depth_hints_loss(self, depth_hints_masks, inv_depths, gt_depths, K, pose, progress=0.0):
 
         if self.supervised_method == 'reprojected':
-            supervised_losses = self.supervised_loss(depths, gt_depths, K, pose, valid_masks=depth_hints_masks,
+            supervised_losses = self.supervised_loss(inv_depths, gt_depths, K, pose, valid_masks=depth_hints_masks,
                                                      progress=progress)
         else:
-            supervised_losses = self.supervised_loss(depths, gt_depths, valid_masks=depth_hints_masks)
+            supervised_losses = self.supervised_loss(inv_depths, gt_depths, valid_masks=depth_hints_masks)
 
         depth_hints_loss = sum([supervised_losses[i].mean() for i in range(self.n)]) / self.n
 
@@ -118,7 +118,7 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         loss = self.reduce_photometric_loss(photometric_losses)
 
         depth_hints_mask = self.calc_depth_hints_mask(photometric_losses, gt_photometric_losses)
-        depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, depths, gt_depths, K, poses[0],
+        depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, inv_depths, gt_depths, K, poses[0],
                                                       progress=progress)
 
         # make a list as in-pace sum is not auto-grad friendly

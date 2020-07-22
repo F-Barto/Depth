@@ -457,7 +457,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
             logs = avg_metrics_values
 
         results = {
-            'test-abs_rel': avg_metrics_values['test/rmse_log'],
+            'test-rmse_log': avg_metrics_values['test/rmse_log'],
             'log': logs,
             'progress_bar': {'rmse_log': avg_metrics_values['test/rmse_log'],
                              'a1': avg_metrics_values['test/a1']
