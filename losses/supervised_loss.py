@@ -133,12 +133,12 @@ class SupervisedLoss(LossBase):
 
         losses = []
 
-        gt_inv_depths = [inv2depth(gt_depths[i]) for i in range(self.n)]
+        gt_inv_depths = [depth2inv(gt_depths[i]) for i in range(self.n)]
 
         # If using a sparse loss, mask invalid pixels for all scales
         if self.supervised_method.startswith('sparse'):
             for i in range(self.n):
-                mask = (gt_inv_depths[i] > 0.).detach()
+                mask = (gt_depths[i] > 0.).detach()
 
                 if valid_masks is not None:
                     mask = mask & valid_masks[i]
