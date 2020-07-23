@@ -34,12 +34,26 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
 
     def calc_depth_hints_mask(self, photometric_losses, gt_photometric_losses):
         depth_hints_masks = []
+
+        len_photo = len(photometric_losses[0]) # same for all scales
+        len_gt_photo = len(gt_photometric_losses[0])  # same for all scales
+
         for i in range(self.n):
             all_losses = torch.cat(photometric_losses[i] + gt_photometric_losses[i], dim=1)
 
             # we keep all
             idxs = torch.argmin(all_losses, dim=1, keepdim=True).detach()
-            depth_hint_mask = (idxs == 2)
+
+
+            # compute mask for each source views
+            depth_hint_mask = []
+            for i in range(len_photo, len_photo+len_gt_photo):
+                depth_hint_mask.append((idxs == 2))
+            depth_hint_mask = torch.cat(depth_hint_mask, dim=1)
+
+            # if, in any source view, depth hint reprojection better than estimated or identity reprojection keep it
+            depth_hint_mask = depth_hint_mask.any(dim=1, keepdim=True)
+
             depth_hints_masks.append(depth_hint_mask)
 
         return depth_hints_masks
@@ -119,12 +133,10 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         # Calculate reduced loss
         loss = self.reduce_photometric_loss(photometric_losses)
 
-        print('len(photometric_losses): ', len(photometric_losses))
-        print('len(gt_photometric_losses): ', len(gt_photometric_losses))
-        print('len(photometric_losses[0]): ', len(photometric_losses[0]))
-        print('len(gt_photometric_losses[0]): ', len(gt_photometric_losses[0]))
-
         depth_hints_mask = self.calc_depth_hints_mask(photometric_losses, gt_photometric_losses)
+        
+        # here the argument "pose" is only used if we use the reprojection loss from toyota
+        # which source wiew is used is not important, read more at https://arxiv.org/abs/1910.01765
         depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, inv_depths, gt_depths, K, poses[0], progress=progress)
 
         # make a list as in-pace sum is not auto-grad friendly
