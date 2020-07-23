@@ -76,9 +76,9 @@ class SilogLoss(nn.Module):
 def get_loss_func(supervised_method):
     """Determines the supervised loss to be used, given the supervised method."""
     if supervised_method.endswith('l1'):
-        return nn.L1Loss(reduction=None)
+        return nn.L1Loss(reduction='none')
     elif supervised_method.endswith('mse'):
-        return nn.MSELoss(reduction=None)
+        return nn.MSELoss(reduction='none')
     elif supervised_method.endswith('berhu'):
         return BerHuLoss()
     elif supervised_method.endswith('silog'):
@@ -144,9 +144,13 @@ class SupervisedLoss(LossBase):
                     mask = mask & valid_masks[i]
 
                 masked_inv_depth = inv_depths[i][mask]
+                print('masked_inv_depth')
                 print(masked_inv_depth)
                 print(masked_inv_depth.shape)
                 masked_gt_inv_depth = gt_inv_depths[i][mask]
+                print('masked_gt_inv_depth')
+                print(masked_gt_inv_depth)
+                print(masked_gt_inv_depth.shape)
                 loss = self.loss_func(masked_inv_depth, masked_gt_inv_depth)
                 losses.append(loss)
 
