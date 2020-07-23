@@ -97,15 +97,6 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
             for i in range(self.n):
                 photometric_losses[i].append(photometric_loss[i])
 
-            # Calculate warped images
-            ref_gt_warped = self.warp_ref_images(gt_depths, source_view, K, K, pose)
-            # Calculate and store image loss
-            gt_photometric_loss = self.calc_photometric_loss(ref_gt_warped, target_images)
-            for i in range(self.n):
-                gt_depth_mask = (gt_depths[i] <= 0).float()
-                # set loss for missing gt pixels to be high so they are never chosen as minimum
-                gt_photometric_losses[i].append(gt_photometric_loss[i] + 1000. * gt_depth_mask)
-
             # If using automask
             if self.automask_loss:
                 # Calculate and store unwarped image loss
@@ -114,15 +105,26 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
                 for i in range(self.n):
                     photometric_losses[i].append(unwarped_image_loss[i])
 
+            # Calculate warped images
+            ref_gt_warped = self.warp_ref_images(gt_depths, source_view, K, K, pose)
+            # Calculate and store image loss
+            gt_photometric_loss = self.calc_photometric_loss(ref_gt_warped, target_images)
+            for i in range(self.n):
+                gt_depth_mask = (gt_depths[i] <= 0).float().detach()
+                # set loss for missing gt pixels to be high so they are never chosen as minimum
+                gt_photometric_losses[i].append(gt_photometric_loss[i] + 1000. * gt_depth_mask)
+
+
+
         # Calculate reduced loss
         loss = self.reduce_photometric_loss(photometric_losses)
 
-        depth_hints_mask = self.calc_depth_hints_mask(photometric_losses, gt_photometric_losses)
-        depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, inv_depths, gt_depths, K, poses[0],
-                                                      progress=progress)
+        #depth_hints_mask = self.calc_depth_hints_mask(photometric_losses, gt_photometric_losses)
+        #depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, inv_depths, gt_depths, K, poses[0], progress=progress)
 
         # make a list as in-pace sum is not auto-grad friendly
-        losses = [loss, depth_hints_loss]
+        #losses = [loss, depth_hints_loss]
+        losses = [loss]
 
         # Include smoothness loss if requested
         if self.smooth_loss_weight > 0.0:
