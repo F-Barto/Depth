@@ -119,6 +119,11 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         # Calculate reduced loss
         loss = self.reduce_photometric_loss(photometric_losses)
 
+        print('len(photometric_losses): ', len(photometric_losses))
+        print('len(gt_photometric_losses): ', len(gt_photometric_losses))
+        print('len(photometric_losses[0]): ', len(photometric_losses[0]))
+        print('len(gt_photometric_losses[0]): ', len(gt_photometric_losses[0]))
+
         depth_hints_mask = self.calc_depth_hints_mask(photometric_losses, gt_photometric_losses)
         depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, inv_depths, gt_depths, K, poses[0], progress=progress)
 
