@@ -55,7 +55,7 @@ class BerHuLoss(nn.Module):
         huber_mask = (diff > huber_c).detach()
         diff2 = diff[huber_mask]
         diff2 = diff2 ** 2
-        return torch.cat((diff, diff2)).mean()
+        return torch.mean(torch.cat((diff, diff2)), dim=1, keepdim=True)
 
 class SilogLoss(nn.Module):
     def __init__(self, ratio=10, ratio2=0.85):
@@ -67,7 +67,7 @@ class SilogLoss(nn.Module):
         log_diff = torch.log(pred * self.ratio) - \
                    torch.log(gt * self.ratio)
         silog1 = torch.mean(log_diff ** 2)
-        silog2 = self.ratio2 * (log_diff.mean() ** 2)
+        silog2 = self.ratio2 * (torch.mean(log_diff, dim=1, keepdim=True) ** 2)
         silog_loss = torch.sqrt(silog1 - silog2) * self.ratio
         return silog_loss
 
@@ -76,9 +76,9 @@ class SilogLoss(nn.Module):
 def get_loss_func(supervised_method):
     """Determines the supervised loss to be used, given the supervised method."""
     if supervised_method.endswith('l1'):
-        return nn.L1Loss()
+        return nn.L1Loss(reduction=None)
     elif supervised_method.endswith('mse'):
-        return nn.MSELoss()
+        return nn.MSELoss(reduction=None)
     elif supervised_method.endswith('berhu'):
         return BerHuLoss()
     elif supervised_method.endswith('silog'):
@@ -144,6 +144,8 @@ class SupervisedLoss(LossBase):
                     mask = mask & valid_masks[i]
 
                 masked_inv_depth = inv_depths[i][mask]
+                print(masked_inv_depth)
+                print(masked_inv_depth.shape)
                 masked_gt_inv_depth = gt_inv_depths[i][mask]
                 loss = self.loss_func(masked_inv_depth, masked_gt_inv_depth)
                 losses.append(loss)
