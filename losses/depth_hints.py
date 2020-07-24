@@ -134,7 +134,7 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         loss = self.reduce_photometric_loss(photometric_losses)
 
         depth_hints_mask = self.calc_depth_hints_mask(photometric_losses, gt_photometric_losses)
-        
+
         # here the argument "pose" is only used if we use the reprojection loss from toyota
         # which source wiew is used is not important, read more at https://arxiv.org/abs/1910.01765
         depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, inv_depths, gt_depths, K, poses[0], progress=progress)

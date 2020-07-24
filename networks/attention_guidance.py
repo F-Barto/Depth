@@ -44,6 +44,8 @@ class AttentionGuidance(nn.Module):
         if 'concat' == attention_scheme:
             pass
         elif 'concat' in attention_scheme:
+            if 'concatlin' in attention_scheme:
+                self.pre_conv_3x3 = nn.Conv2d(inplanes * 2, inplanes * 2, kernel_size=3, padding=1, bias=True)
             self.attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
         else:
             self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
@@ -51,6 +53,12 @@ class AttentionGuidance(nn.Module):
 
         self.attention_scheme = attention_scheme
 
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
 
     def fuse_features(self, original_features, attentive_masks):
         if 'res' in self.attention_scheme:
@@ -68,6 +76,10 @@ class AttentionGuidance(nn.Module):
 
         if 'concat' == self.attention_scheme:
             final_features = c
+        elif 'concatlin' in self.attention_scheme:
+            x = self.pre_conv_3x3(c)
+            attentive_mask = self.attention_block(x)
+            final_features = self.fuse_features([x], [attentive_mask])
         elif 'concat' in self.attention_scheme:
             attentive_mask = self.attention_block(c)
             final_features = self.fuse_features([c], [attentive_mask])
