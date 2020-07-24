@@ -25,6 +25,14 @@ class AttentionBlock(nn.Module):
         self.conv_3x3 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
 
+        nn.init.kaiming_normal_(self.conv_1x1.weight, mode='fan_out', nonlinearity='relu')
+        nn.init.xavier_normal_(self.conv_3x3.weight, gain=1.0)
+
+        for m in self.modules():
+            if isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
     def forward(self, x):
         x = self.conv_1x1(x)
         x = self.bn1(x)
@@ -46,19 +54,18 @@ class AttentionGuidance(nn.Module):
         elif 'concat' in attention_scheme:
             if 'concatlin' in attention_scheme:
                 self.pre_conv_3x3 = nn.Conv2d(inplanes * 2, inplanes * 2, kernel_size=3, padding=1, bias=True)
+                self.post_bn = nn.BatchNorm2d(inplanes * 2)
+
+                nn.init.kaiming_normal_(self.pre_conv_3x3.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.constant_(self.post_bn.weight, 1)
+                nn.init.constant_(self.post_bn.bias, 0)
+
             self.attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
         else:
             self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
             self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
 
         self.attention_scheme = attention_scheme
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
 
     def fuse_features(self, original_features, attentive_masks):
         if 'res' in self.attention_scheme:
@@ -80,6 +87,7 @@ class AttentionGuidance(nn.Module):
             x = self.pre_conv_3x3(c)
             attentive_mask = self.attention_block(x)
             final_features = self.fuse_features([x], [attentive_mask])
+            final_features = self.post_bn(final_features)
         elif 'concat' in self.attention_scheme:
             attentive_mask = self.attention_block(c)
             final_features = self.fuse_features([c], [attentive_mask])
