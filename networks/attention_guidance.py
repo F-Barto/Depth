@@ -54,11 +54,7 @@ class AttentionGuidance(nn.Module):
         elif 'concat' in attention_scheme:
             if 'concatlin' in attention_scheme:
                 self.pre_conv_3x3 = nn.Conv2d(inplanes * 2, inplanes * 2, kernel_size=3, padding=1, bias=True)
-                self.post_bn = nn.BatchNorm2d(inplanes * 2)
-
                 nn.init.kaiming_normal_(self.pre_conv_3x3.weight, mode='fan_out', nonlinearity='relu')
-                nn.init.constant_(self.post_bn.weight, 1)
-                nn.init.constant_(self.post_bn.bias, 0)
 
             self.attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
         else:
@@ -87,7 +83,6 @@ class AttentionGuidance(nn.Module):
             x = self.pre_conv_3x3(c)
             attentive_mask = self.attention_block(x)
             final_features = self.fuse_features([x], [attentive_mask])
-            final_features = self.post_bn(final_features)
         elif 'concat' in self.attention_scheme:
             attentive_mask = self.attention_block(c)
             final_features = self.fuse_features([c], [attentive_mask])
