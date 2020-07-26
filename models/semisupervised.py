@@ -34,7 +34,7 @@ from dataloaders.transforms import train_transforms, val_transforms, test_transf
 
 from utils.pose import Pose
 from utils.image import interpolate_scales
-from utils.depth import inv2depth, compute_depth_metrics
+from utils.depth import inv2depth, depth2inv, compute_depth_metrics
 from utils.common_logging import average_metrics
 from utils.wandb_logging import prepare_images_to_log as wandb_prep_images
 from utils.tensorboard_logging import prepare_images_to_log as tensorboard_prep_images
@@ -147,7 +147,8 @@ class MonocularSemiSupDepth(pl.LightningModule):
         if sparse_depth is None:
             inv_depths = self.depth_net(image)
         else:
-            inv_depths = self.depth_net(image, sparse_depth)
+            inv_sparse_depth = depth2inv(sparse_depth)
+            inv_depths = self.depth_net(image, inv_sparse_depth)
 
         inv_depths = inv_depths if is_list(inv_depths) else [inv_depths]
 
