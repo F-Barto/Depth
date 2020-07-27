@@ -18,9 +18,10 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, supervised_method='reprojected', **kwargs):
+    def __init__(self, supervised_method='reprojected', hinted_loss_weight=1.0, **kwargs):
         super().__init__(**kwargs)
 
+        self.hinted_loss_weight = hinted_loss_weight
 
         if supervised_method == 'reprojected':
             self._supervised_loss = ReprojectedLoss(**kwargs)
@@ -138,6 +139,7 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         # here the argument "pose" is only used if we use the reprojection loss from toyota
         # which source wiew is used is not important, read more at https://arxiv.org/abs/1910.01765
         depth_hints_loss = self.calc_depth_hints_loss(depth_hints_mask, inv_depths, gt_depths, K, poses[0], progress=progress)
+        depth_hints_loss = self.hinted_loss_weight * depth_hints_loss
 
         # make a list as in-pace sum is not auto-grad friendly
         losses = [loss, depth_hints_loss]
