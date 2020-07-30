@@ -40,9 +40,10 @@ class GuidedDepthResNet(nn.Module):
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
         self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels, activation=activation_cls,
-                                     preact=False, invertible=False, n_power_iterations=5)
+                                     preact=preact, invertible=invertible, n_power_iterations=n_power_iterations)
         self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1, activation=activation_cls,
-                                           no_first_norm=True, preact=False, invertible=False, n_power_iterations=5,)
+                                           no_first_norm=True, preact=preact, invertible=invertible,
+                                           n_power_iterations=n_power_iterations)
 
         self.num_ch_enc = self.encoder.num_ch_enc
         skip_features_factor = 2 if 'concat' in attention_scheme else 1
