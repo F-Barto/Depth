@@ -147,8 +147,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         if sparse_depth is None:
             inv_depths = self.depth_net(image)
         else:
-            inv_sparse_depth = depth2inv(sparse_depth)
-            inv_depths = self.depth_net(image, inv_sparse_depth)
+            inv_depths = self.depth_net(image, sparse_depth)
 
         inv_depths = inv_depths if is_list(inv_depths) else [inv_depths]
 

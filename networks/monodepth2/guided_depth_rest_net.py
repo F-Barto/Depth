@@ -8,6 +8,7 @@ from networks.monodepth2.layers.common import disp_to_depth, get_activation
 from networks.pac import PacConv2d
 from networks.attention_guidance import AttentionGuidance
 
+from utils.depth import depth2inv
 ########################################################################################################################
 
 
@@ -25,12 +26,14 @@ class GuidedDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac', attention_scheme='res-sig',
-                 **kwargs):
+                 inverse_lidar_input=True, **kwargs):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
         assert guidance in ['pac', 'attention']
+
+        self.inverse_lidar_input = inverse_lidar_input
 
         activation_cls = get_activation(activation)
 
@@ -66,6 +69,10 @@ class GuidedDepthResNet(nn.Module):
         Runs the network and returns inverse depth maps
         (4 scales if training and 1 if not).
         """
+
+        if self.inverse_lidar_input:
+            lidar_input = depth2inv(lidar_input)
+
         cam_features = self.encoder(cam_input)
         lidar_features = self.lidar_encoder(lidar_input)
 
