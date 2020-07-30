@@ -27,7 +27,7 @@ class GuidedDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac', attention_scheme='res-sig',
-                 inverse_lidar_input=True, **kwargs):
+                 inverse_lidar_input=True, preact=False, invertible=False, n_power_iterations=5, **kwargs):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
@@ -39,10 +39,10 @@ class GuidedDepthResNet(nn.Module):
         activation_cls = get_activation(activation)
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
-        self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels,
-                                     activation=activation_cls, **kwargs)
+        self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels, activation=activation_cls,
+                                     preact=False, invertible=False, n_power_iterations=5)
         self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1, activation=activation_cls,
-                                           no_first_norm=True,  **kwargs)
+                                           no_first_norm=True, preact=False, invertible=False, n_power_iterations=5,)
 
         self.num_ch_enc = self.encoder.num_ch_enc
         skip_features_factor = 2 if 'concat' in attention_scheme else 1
