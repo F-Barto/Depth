@@ -41,10 +41,10 @@ class ResNet(nn.Module):
 
         ############### body ###############
         stride = 1 if self.invertible else 2
-        self.layer1 = self._make_layer(block, 64, layers[0], activation)
-        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=stride)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=stride)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=stride)
+        self.layer1 = self._make_layer(block, 64, layers[0], activation, **kwargs)
+        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=stride, **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=stride, **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=stride, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -63,7 +63,7 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, activation, stride=1):
+    def _make_layer(self, block, planes, blocks, activation, stride=1, **kwargs):
         norm_layer = self._norm_layer
         downsample = None
         if (stride != 1 or self.inplanes != planes * block.expansion) and not self.invertible:
@@ -80,10 +80,10 @@ class ResNet(nn.Module):
 
         if self.invertible:
             layers.append(PixelUnshuffle(2))
-            layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width))
+            layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width, **kwargs))
             self.inplanes = planes * block.expansion
             for _ in range(1, blocks):
-                layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width))
+                layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width, **kwargs))
 
         else:
             layers.append(block(self.inplanes, planes, activation, stride, downsample, self.groups,
