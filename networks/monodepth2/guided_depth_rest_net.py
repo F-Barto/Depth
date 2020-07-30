@@ -9,6 +9,7 @@ from networks.pac import PacConv2d
 from networks.attention_guidance import AttentionGuidance
 
 from utils.depth import depth2inv
+
 ########################################################################################################################
 
 
@@ -39,9 +40,9 @@ class GuidedDepthResNet(nn.Module):
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
         self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels,
-                                     activation=activation_cls)
-        self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1,
-                                           activation=activation_cls, no_first_norm=True)
+                                     activation=activation_cls, **kwargs)
+        self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1, activation=activation_cls,
+                                           no_first_norm=True,  **kwargs)
 
         self.num_ch_enc = self.encoder.num_ch_enc
         skip_features_factor = 2 if 'concat' in attention_scheme else 1

@@ -1,14 +1,14 @@
 import torch
 from torch import nn
-from .blocks import conv1x1, BasicBlock, Bottleneck
+from .blocks import conv1x1, conv7x7, BasicBlock, Bottleneck, PreActBasicBlock, InvertiblePreActBasicBlock
+from networks.pixelunshuffle import PixelUnshuffle
 
 
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, activation, num_classes=1000, zero_init_residual=False,
-                 groups=1, width_per_group=64, replace_stride_with_dilation=None,
-                 norm_layer=None, input_channels=3, no_first_norm=False):
+    def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
+                 norm_layer=None, input_channels=3, no_first_norm=False, preact=False, invertible=False, **kwargs):
         super(ResNet, self).__init__()
 
         if norm_layer is None:
@@ -16,33 +16,35 @@ class ResNet(nn.Module):
         self._norm_layer = norm_layer
 
         self.no_first_norm = no_first_norm
+        self.preact = preact
+        self.invertible = invertible
 
         self.inplanes = 64
-        self.dilation = 1
-        if replace_stride_with_dilation is None:
-            # each element in the tuple indicates if we should replace
-            # the 2x2 stride with a dilated convolution instead
-            replace_stride_with_dilation = [False, False, False]
-        if len(replace_stride_with_dilation) != 3:
-            raise ValueError("replace_stride_with_dilation should be None "
-                             "or a 3-element tuple, got {}".format(replace_stride_with_dilation))
+
         self.groups = groups
         self.base_width = width_per_group
-        self.conv1 = nn.Conv2d(input_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
-                               bias=self.no_first_norm)
-        if not self.no_first_norm:
+
+        ############### first conv ###############
+        if self.invertible:
+            self.conv1 = conv7x7(input_channels, self.inplanes, stride=1, groups=1, spectral_norm=True, **kwargs)
+        else:
+            self.conv1 = conv7x7(input_channels, self.inplanes, stride=2, bias=self.no_first_norm)
+
+        if not self.no_first_norm or not self.invertible:
             self.bn1 = norm_layer(self.inplanes)
         self.activation = activation(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        if self.invertible:
+            self.pooling = PixelUnshuffle(2)
+        else:
+            self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        ############### body ###############
+        stride = 1 if self.invertible else 2
         self.layer1 = self._make_layer(block, 64, layers[0], activation)
-        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2,
-                                       dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=2,
-                                       dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=2,
-                                       dilate=replace_stride_with_dilation[2])
-        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
+        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=stride)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=stride)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=stride)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -61,27 +63,35 @@ class ResNet(nn.Module):
                 elif isinstance(m, BasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
 
-    def _make_layer(self, block, planes, blocks, activation, stride=1, dilate=False):
+    def _make_layer(self, block, planes, blocks, activation, stride=1):
         norm_layer = self._norm_layer
         downsample = None
-        previous_dilation = self.dilation
-        if dilate:
-            self.dilation *= stride
-            stride = 1
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                conv1x1(self.inplanes, planes * block.expansion, stride),
-                norm_layer(planes * block.expansion),
-            )
+        if (stride != 1 or self.inplanes != planes * block.expansion) and not self.invertible:
+            if not self.preact:
+                downsample = nn.Sequential(
+                    conv1x1(self.inplanes, planes * block.expansion, stride),
+                    norm_layer(planes * block.expansion),
+                )
+            else:
+                downsample = conv1x1(self.inplanes, planes * block.expansion, stride)
+
 
         layers = []
-        layers.append(block(self.inplanes, planes, activation, stride, downsample, self.groups,
-                            self.base_width, previous_dilation, norm_layer))
-        self.inplanes = planes * block.expansion
-        for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, activation, groups=self.groups,
-                                base_width=self.base_width, dilation=self.dilation,
-                                norm_layer=norm_layer))
+
+        if self.invertible:
+            layers.append(PixelUnshuffle(2))
+            layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width))
+            self.inplanes = planes * block.expansion
+            for _ in range(1, blocks):
+                layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width))
+
+        else:
+            layers.append(block(self.inplanes, planes, activation, stride, downsample, self.groups,
+                                self.base_width, norm_layer))
+            self.inplanes = planes * block.expansion
+            for _ in range(1, blocks):
+                layers.append(block(self.inplanes, planes, activation, groups=self.groups,
+                                    base_width=self.base_width, norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 
@@ -91,16 +101,12 @@ class ResNet(nn.Module):
         if not self.no_first_norm:
             x = self.bn1(x)
         x = self.activation(x)
-        x = self.maxpool(x)
+        x = self.pooling(x)
 
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-        x = self.fc(x)
 
         return x
 
@@ -113,24 +119,40 @@ def _resnet(block, layers, activation, **kwargs):
 
     return model
 
-def resnet18(activation, **kwargs):
+def resnet18(activation, preact=False, invertible=False, **kwargs):
     r"""ResNet-18 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet(BasicBlock, [2, 2, 2, 2], activation, **kwargs)
+
+    block = BasicBlock
+    if preact:
+        block = PreActBasicBlock
+    if invertible:
+        preact = True
+        block = InvertiblePreActBasicBlock
+
+    return _resnet(block, [2, 2, 2, 2], activation, preact=preact, invertible=invertible, **kwargs)
 
 
-def resnet34(activation, **kwargs):
+def resnet34(activation, preact=False, invertible=False, **kwargs):
     r"""ResNet-34 model from
     `"Deep Residual Learning for Image Recognition" <https://arxiv.org/pdf/1512.03385.pdf>`_
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    return _resnet(BasicBlock, [3, 4, 6, 3], activation, **kwargs)
+
+    block = BasicBlock
+    if preact:
+        block = PreActBasicBlock
+    if invertible:
+        preact = True
+        block = InvertiblePreActBasicBlock
+
+    return _resnet(block, [3, 4, 6, 3], activation, preact=preact, invertible=invertible, **kwargs)
 
 
 def resnet50(activation, **kwargs):

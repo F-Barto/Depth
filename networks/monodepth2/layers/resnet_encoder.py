@@ -37,7 +37,7 @@ class ResNetMultiImageInput(models.ResNet):
                 nn.init.constant_(m.bias, 0)
 
 
-def resnet_multiimage_input(num_layers, activation, num_input_images=1, input_channels=3, no_first_norm=False):
+def resnet_multiimage_input(num_layers, activation, num_input_images=1, input_channels=3):
     """Constructs a ResNet model.
     Args:
         num_layers (int): Number of resnet layers. Must be 18 or 50
@@ -57,7 +57,7 @@ def resnet_multiimage_input(num_layers, activation, num_input_images=1, input_ch
     }[num_layers]
 
     model = ResNetMultiImageInput(block_type, blocks, activation, num_input_images=num_input_images,
-                                  input_channels=input_channels, no_first_norm=no_first_norm)
+                                  input_channels=input_channels)
 
     return model
 
@@ -65,7 +65,7 @@ def resnet_multiimage_input(num_layers, activation, num_input_images=1, input_ch
 class ResnetEncoder(nn.Module):
     """Pytorch module for a resnet encoder
     """
-    def __init__(self, num_layers, activation, num_input_images=1, input_channels=3, no_first_norm=False):
+    def __init__(self, num_layers, activation, num_input_images=1, input_channels=3, no_first_norm=False, **kwargs):
         super(ResnetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
@@ -81,10 +81,10 @@ class ResnetEncoder(nn.Module):
 
         if num_input_images > 1:
             self.encoder = resnet_multiimage_input(num_layers, activation, num_input_images,
-                                                   input_channels=input_channels, no_first_norm=no_first_norm)
+                                                   input_channels=input_channels)
         else:
             self.encoder = resnets[num_layers](activation, input_channels=input_channels,
-                                               no_first_norm=no_first_norm)
+                                               no_first_norm=no_first_norm, **kwargs)
 
         if num_layers > 34:
             self.num_ch_enc[1:] *= 4
@@ -92,10 +92,10 @@ class ResnetEncoder(nn.Module):
     def forward(self, input_image):
         self.features = []
         x = self.encoder.conv1(input_image)
-        if not self.encoder.no_first_norm:
+        if not self.encoder.no_first_norm or self.encoder.invertible:
             x = self.encoder.bn1(x)
         self.features.append(self.encoder.activation(x))
-        self.features.append(self.encoder.layer1(self.encoder.maxpool(self.features[-1])))
+        self.features.append(self.encoder.layer1(self.encoder.pooling(self.features[-1])))
         self.features.append(self.encoder.layer2(self.features[-1]))
         self.features.append(self.encoder.layer3(self.features[-1]))
         self.features.append(self.encoder.layer4(self.features[-1]))
