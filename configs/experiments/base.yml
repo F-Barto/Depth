@@ -22,6 +22,6 @@ dataloaders:
 
 metrics:
   crop: garg
-  min_depth: 0.0
+  min_depth: 0.1
   max_depth: 80.0
   use_gt_scale: True

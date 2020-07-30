@@ -30,7 +30,7 @@ class DepthResNet(nn.Module):
 
         self.encoder = ResnetEncoder(num_layers=num_layers, activation=activation_cls)
         self.decoder = DepthDecoder(num_ch_enc=self.encoder.num_ch_enc, activation=activation_cls)
-        self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=100.0)
+        self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=120.0)
 
     def forward(self, x):
         """
