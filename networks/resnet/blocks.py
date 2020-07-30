@@ -155,19 +155,18 @@ class PreActBasicBlock(nn.Module):
         self.bn2 = norm_layer(planes)
         self.conv2 = conv3x3(planes, planes)
         self.downsample = downsample
-        self.stride = stride
 
     def forward(self, x):
 
         out = self.bn1(x)
-        out = self.relu1(out)
+        out = self.activation(out)
 
         identity = self.downsample(out) if self.downsample is not None else x
 
         out = self.conv1(out)
 
         out = self.bn2(out)
-        out = self.relu2(out)
+        out = self.activation(out)
         out = self.conv2(out)
 
         return out + identity
@@ -195,19 +194,14 @@ class InvertiblePreActBasicBlock(nn.Module):
         self.conv1 = conv3x3(inplanes, planes, stride, spectral_norm=True, **kwargs)
         self.conv2 = conv3x3(planes, planes, spectral_norm=True, **kwargs)
         self.downsample = downsample
-        self.stride = stride
 
     def forward(self, x):
 
-        out = self.bn1(x)
-        out = self.relu1(out)
-
+        out = self.activation(x)
         identity = self.downsample(out) if self.downsample is not None else x
-
         out = self.conv1(out)
 
-        out = self.bn2(out)
-        out = self.relu2(out)
+        out = self.activation(out)
         out = self.conv2(out)
 
         return out + identity
