@@ -80,10 +80,10 @@ class ResNet(nn.Module):
 
         if self.invertible:
             layers.append(PixelUnshuffle(2))
-            layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width, **kwargs))
+            layers.append(block(self.inplanes, planes, activation, **kwargs))
             self.inplanes = planes * block.expansion
             for _ in range(1, blocks):
-                layers.append(block(self.inplanes, planes, activation, groups=self.groups, base_width=self.base_width, **kwargs))
+                layers.append(block(self.inplanes, planes, activation, **kwargs))
 
         else:
             layers.append(block(self.inplanes, planes, activation, stride, downsample, self.groups,
