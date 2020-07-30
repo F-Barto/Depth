@@ -49,7 +49,7 @@ def main(project_config, hparams, resume=False):
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     experiment_output_dir = base_output_dir / 'outputs' / project_config.experiment_name
-    latest_ckpt = experiment_output_dir / 'version_0/latest.ckpt'
+    latest_ckpt = experiment_output_dir / 'version_0/last.ckpt'
 
     if resume and latest_ckpt.exists():
         model.load_from_checkpoint(str(latest_ckpt))
@@ -108,6 +108,7 @@ def main(project_config, hparams, resume=False):
         checkpoint_callback = ModelCheckpoint(
             filepath=run_output_dir + '/{epoch:04d}-{val-rmse_log:.5f}', # saves a file like: my/path/epoch=2-abs_rel=0.0115.ckpt
             save_top_k=3,
+            save_last=True,
             verbose=True,
             monitor='val-rmse_log',
             mode='min',
