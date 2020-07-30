@@ -1,5 +1,5 @@
 from torch import nn
-torch.nn.utils import spectral_norm as spectral_norm_conv
+from torch.nn.utils import spectral_norm as spectral_norm_conv
 from networks.spectral_norm_fc import spectral_norm_fc
 
 def conv7x7(in_planes, out_planes, stride=1, groups=1, bias=False, spectral_norm=False, n_power_iterations=5):
