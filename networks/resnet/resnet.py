@@ -31,7 +31,7 @@ class ResNet(nn.Module):
         else:
             self.conv1 = conv7x7(input_channels, self.inplanes, stride=2, bias=self.no_first_norm)
 
-        if not self.no_first_norm or not self.invertible:
+        if not self.no_first_norm and not self.invertible:
             self.bn1 = norm_layer(self.inplanes)
         self.activation = activation(inplace=True)
 
@@ -100,7 +100,7 @@ class ResNet(nn.Module):
     def _forward_impl(self, x):
         # See note [TorchScript super()]
         x = self.conv1(x)
-        if not self.no_first_norm:
+        if not self.no_first_norm and not self.invertible:
             x = self.bn1(x)
         x = self.activation(x)
         x = self.pooling(x)

@@ -92,7 +92,7 @@ class ResnetEncoder(nn.Module):
     def forward(self, input_image):
         self.features = []
         x = self.encoder.conv1(input_image)
-        if not self.encoder.no_first_norm or self.encoder.invertible:
+        if not self.encoder.no_first_norm and not self.encoder.invertible:
             x = self.encoder.bn1(x)
         self.features.append(self.encoder.activation(x))
         self.features.append(self.encoder.layer1(self.encoder.pooling(self.features[-1])))
