@@ -27,7 +27,7 @@ class ResNet(nn.Module):
 
         ############### first conv ###############
         if self.invertible:
-            self.conv1 = conv7x7(input_channels, self.inplanes, stride=1, groups=1, spectral_norm=True, **kwargs)
+            self.conv1 = conv7x7(input_channels, self.inplanes // 4, stride=1, groups=1, spectral_norm=True, **kwargs)
         else:
             self.conv1 = conv7x7(input_channels, self.inplanes, stride=2, bias=self.no_first_norm)
 
@@ -36,8 +36,7 @@ class ResNet(nn.Module):
         self.activation = activation(inplace=True)
 
         if self.invertible:
-            self.pooling = SubPixelDownsamplingBlock(self.inplanes, out_channels=self.inplanes, downscale_factor=2,
-                                                     spectral_norm=True, **kwargs)
+            self.pooling = PixelUnshuffle(2)
         else:
             self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
@@ -83,13 +82,11 @@ class ResNet(nn.Module):
             if stride != 1:
                 layers.append(SubPixelDownsamplingBlock(self.inplanes, out_channels=planes, downscale_factor=2,
                                                         spectral_norm=True, **kwargs))
-                start=0
             else:
                 layers.append(block(self.inplanes, planes, activation, **kwargs))
-                start=1
 
             self.inplanes = planes * block.expansion
-            for _ in range(start, blocks):
+            for _ in range(1, blocks):
                 layers.append(block(self.inplanes, planes, activation, **kwargs))
 
         else:
