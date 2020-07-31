@@ -72,14 +72,8 @@ class ResNet(nn.Module):
                     conv1x1(self.inplanes, planes * block.expansion, stride),
                     norm_layer(planes * block.expansion),
                 )
-
-                print()
-                print('**************Posnet downsample***************')
-                print(downsample)
-
             else:
                 downsample = conv1x1(self.inplanes, planes * block.expansion, stride)
-
 
         layers = []
 
@@ -101,9 +95,6 @@ class ResNet(nn.Module):
             for _ in range(1, blocks):
                 layers.append(block(self.inplanes, planes, activation, groups=self.groups,
                                     base_width=self.base_width, norm_layer=norm_layer))
-
-            print()
-            print('**************Posnet layers***************')
 
         return nn.Sequential(*layers)
 

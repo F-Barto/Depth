@@ -30,7 +30,7 @@ class PoseResNet(nn.Module):
         activation_cls = get_activation(activation)
 
         self.encoder = ResnetEncoder(num_layers=num_layers, activation=activation_cls, num_input_images=2,
-                                     input_channels=3)
+                                     input_channels=input_channels)
         self.decoder = PoseDecoder(num_ch_enc=self.encoder.num_ch_enc, num_input_features=1,
                                    activation=activation_cls, num_frames_to_predict_for=2)
 

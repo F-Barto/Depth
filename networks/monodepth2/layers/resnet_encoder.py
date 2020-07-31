@@ -17,10 +17,7 @@ class ResNetMultiImageInput(models.ResNet):
     """
     def __init__(self, block, layers, activation, num_input_images=1, input_channels=3):
         super(ResNetMultiImageInput, self).__init__(block, layers, activation, input_channels=input_channels,
-                                                    no_first_norm=False, preact=False, invertible=False)
-
-        print()
-        print('**************Posnet invertible***************', self.invertible)
+                                                    no_first_norm=False, invertible=False)
 
         self.inplanes = 64
         self.conv1 = nn.Conv2d(num_input_images * input_channels, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -87,8 +84,6 @@ class ResnetEncoder(nn.Module):
             raise ValueError("{} is not a valid number of resnet layers".format(num_layers))
 
         if num_input_images > 1:
-            print()
-            print('**************MultiIMAGE***************')
             self.encoder = resnet_multiimage_input(num_layers, activation, num_input_images,
                                                    input_channels=input_channels)
         else:

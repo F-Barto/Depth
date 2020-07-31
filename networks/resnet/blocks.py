@@ -34,7 +34,7 @@ def conv1x1(in_planes, out_planes, stride=1, bias=False, spectral_norm=False, n_
         return spectral_norm_fc(conv_layer, n_power_iterations)
 
     else:
-        nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=bias)
+        return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=bias)
 
 
 class BasicBlock(nn.Module):
