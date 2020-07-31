@@ -88,7 +88,7 @@ class ResnetEncoder(nn.Module):
                                                    input_channels=input_channels)
         else:
             self.encoder = resnets[num_layers](activation, input_channels=input_channels,
-                                               no_first_norm=no_first_norm, **kwargs)
+                                               no_first_norm=no_first_norm, invertible=invertible, **kwargs)
 
         if num_layers > 34:
             self.num_ch_enc[1:] *= 4
