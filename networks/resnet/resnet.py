@@ -42,11 +42,10 @@ class ResNet(nn.Module):
             self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         ############### body ###############
-        stride = 1 if self.invertible else 2
         self.layer1 = self._make_layer(block, 64, layers[0], activation, **kwargs)
-        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=stride, **kwargs)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=stride, **kwargs)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=stride, **kwargs)
+        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2, **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=2, **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=2, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -81,10 +80,16 @@ class ResNet(nn.Module):
         layers = []
 
         if self.invertible:
-            layers.append(SubPixelDownsamplingBlock(self.inplanes, out_channels=planes, downscale_factor=2,
-                                                    spectral_norm = True, **kwargs))
+            if stride != 1:
+                layers.append(SubPixelDownsamplingBlock(self.inplanes, out_channels=planes, downscale_factor=2,
+                                                        spectral_norm=True, **kwargs))
+                start=0
+            else:
+                layers.append(block(self.inplanes, planes, activation, **kwargs))
+                start=1
+
             self.inplanes = planes * block.expansion
-            for _ in range(0, blocks):
+            for _ in range(start, blocks):
                 layers.append(block(self.inplanes, planes, activation, **kwargs))
 
         else:
@@ -102,6 +107,7 @@ class ResNet(nn.Module):
         x = self.conv1(x)
         if not self.no_first_norm and not self.invertible:
             x = self.bn1(x)
+
         x = self.activation(x)
         x = self.pooling(x)
 

@@ -187,21 +187,19 @@ class InvertiblePreActBasicBlock(nn.Module):
     """
     expansion = 1
 
-    def __init__(self, inplanes, planes, activation_cls, stride=1, downsample=None, **kwargs):
+    def __init__(self, inplanes, planes, activation_cls,**kwargs):
         super(InvertiblePreActBasicBlock, self).__init__()
 
         self.activation = activation_cls(inplace=True)
-        self.conv1 = conv3x3(inplanes, planes, stride, spectral_norm=True, **kwargs)
+        self.conv1 = conv3x3(inplanes, planes, spectral_norm=True, **kwargs)
         self.conv2 = conv3x3(planes, planes, spectral_norm=True, **kwargs)
-        self.downsample = downsample
 
     def forward(self, x):
 
         out = self.activation(x)
-        identity = self.downsample(out) if self.downsample is not None else x
         out = self.conv1(out)
 
         out = self.activation(out)
         out = self.conv2(out)
 
-        return out + identity
+        return out + x
