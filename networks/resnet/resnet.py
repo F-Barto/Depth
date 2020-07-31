@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from .blocks import conv1x1, conv7x7, BasicBlock, Bottleneck, PreActBasicBlock, InvertiblePreActBasicBlock
 from networks.pixelunshuffle import PixelUnshuffle
+from networks.monodepth2.layers.common import SubPixelDownsamplingBlock
 
 
 
@@ -35,7 +36,8 @@ class ResNet(nn.Module):
         self.activation = activation(inplace=True)
 
         if self.invertible:
-            self.pooling = PixelUnshuffle(2)
+            self.pooling = SubPixelDownsamplingBlock(self.inplanes, out_channels=self.inplanes, downscale_factor=2,
+                                                     spectral_norm=True, **kwargs)
         else:
             self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
@@ -79,10 +81,10 @@ class ResNet(nn.Module):
         layers = []
 
         if self.invertible:
-            layers.append(PixelUnshuffle(2))
-            layers.append(block(self.inplanes, planes, activation, **kwargs))
+            layers.append(SubPixelDownsamplingBlock(self.inplanes, out_channels=planes, downscale_factor=2,
+                                                    spectral_norm = True, **kwargs))
             self.inplanes = planes * block.expansion
-            for _ in range(1, blocks):
+            for _ in range(0, blocks):
                 layers.append(block(self.inplanes, planes, activation, **kwargs))
 
         else:

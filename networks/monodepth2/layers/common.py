@@ -4,12 +4,16 @@
 # https://github.com/nianticlabs/monodepth2/blob/master/layers.py
 
 from __future__ import absolute_import, division, print_function
+from torch.nn.utils import spectral_norm as spectral_norm_conv
+from networks.resnet.blocks import conv3x3
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.mish import MishAuto
+
+from networks.pixelunshuffle import PixelUnshuffle
 
 def get_activation(activation_name):
     activations = {
@@ -118,4 +122,22 @@ class SubPixelUpsamplingBlock(nn.Module):
         if self.do_blur:
             x = self.pad(x)
             x = self.blur(x)
+        return x
+
+class SubPixelDownsamplingBlock(nn.Module):
+    "Upsample by `scale` from `ni` filters to `nf` (default `ni`), using `nn.PixelShuffle`, `icnr` init, and `weight_norm`."
+    "useful conversation: https://twitter.com/jeremyphoward/status/1066429286771580928"
+    def __init__(self, in_channels, out_channels=None, downscale_factor=2, spectral_norm=True, n_power_iterations=5):
+        super(SubPixelDownsamplingBlock, self).__init__()
+        out_channels = in_channels if out_channels is None else out_channels
+
+        self.conv = conv3x3(in_channels, out_channels // (downscale_factor * downscale_factor), stride=1, bias=True,
+                            spectral_norm=spectral_norm, n_power_iterations =n_power_iterations)
+        self.pixel_unshuffle = PixelUnshuffle(downscale_factor)
+
+    def forward(self,x):
+
+        x = self.conv(x)
+        x = self.pixel_unshuffle(x)
+
         return x
