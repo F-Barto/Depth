@@ -22,14 +22,15 @@ class PoseResNet(nn.Module):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, num_layers=18, activation='relu'):
+    def __init__(self, num_layers=18, activation='relu', input_channels=3):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
         activation_cls = get_activation(activation)
 
-        self.encoder = ResnetEncoder(num_layers=num_layers, activation=activation_cls, num_input_images=2)
+        self.encoder = ResnetEncoder(num_layers=num_layers, activation=activation_cls, num_input_images=2,
+                                     input_channels=3)
         self.decoder = PoseDecoder(num_ch_enc=self.encoder.num_ch_enc, num_input_features=1,
                                    activation=activation_cls, num_frames_to_predict_for=2)
 

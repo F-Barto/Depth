@@ -96,10 +96,10 @@ class MonocularSemiSupDepth(pl.LightningModule):
         if self.hparams.model.depth_net.name == 'packnet':
             self.depth_net = PackNet01(**hparams.model.depth_net.options, input_channels=self.input_channels)
         elif self.hparams.model.depth_net.name == 'monodepth':
-            self.depth_net = DepthResNet(**hparams.model.depth_net.options)
+            self.depth_net = DepthResNet(**hparams.model.depth_net.options, input_channels=self.input_channels)
         elif self.hparams.model.depth_net.name == 'guiding':
             assert train_dataset.load_sparse_depth, "Sparse depth signal is necessary for feature guidance."
-            self.depth_net = GuidedDepthResNet(**hparams.model.depth_net.options)
+            self.depth_net = GuidedDepthResNet(**hparams.model.depth_net.options, input_channels=self.input_channels)
         else:
             terminal_logger.error(f"Depth net {self.hparams.model.depth_net.name} not implemented")
 
@@ -107,7 +107,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         if self.hparams.model.pose_net.name == 'packnet':
             self.pose_net = PoseNet(**hparams.model.pose_net.options, input_channels=self.input_channels)
         elif self.hparams.model.pose_net.name == 'monodepth':
-            self.pose_net = PoseResNet(**hparams.model.pose_net.options)
+            self.pose_net = PoseResNet(**hparams.model.pose_net.options, input_channels=self.input_channels)
         else:
             terminal_logger.error(f"Pose net {self.hparams.model.pose_net.name} not implemented")
 
