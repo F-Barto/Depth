@@ -65,10 +65,14 @@ def resnet_multiimage_input(num_layers, activation, num_input_images=1, input_ch
 class ResnetEncoder(nn.Module):
     """Pytorch module for a resnet encoder
     """
-    def __init__(self, num_layers, activation, num_input_images=1, input_channels=3, no_first_norm=False, **kwargs):
+    def __init__(self, num_layers, activation, num_input_images=1, input_channels=3, no_first_norm=False,
+                 invertible=False, **kwargs):
         super(ResnetEncoder, self).__init__()
 
-        self.num_ch_enc = np.array([64, 64, 128, 256, 512])
+        if invertible:
+            self.num_ch_enc = np.array([64//4, 64, 128, 256, 512])
+        else:
+            self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
         resnets = {18: models.resnet18,
                    34: models.resnet34,
