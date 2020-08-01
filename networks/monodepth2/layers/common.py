@@ -127,9 +127,14 @@ class SubPixelUpsamplingBlock(nn.Module):
 class SubPixelDownsamplingBlock(nn.Module):
     "Upsample by `scale` from `ni` filters to `nf` (default `ni`), using `nn.PixelShuffle`, `icnr` init, and `weight_norm`."
     "useful conversation: https://twitter.com/jeremyphoward/status/1066429286771580928"
-    def __init__(self, in_channels, out_channels=None, downscale_factor=2, spectral_norm=True, n_power_iterations=5):
+    def __init__(self, in_channels, out_channels=None, downscale_factor=2, activation=None,
+                 spectral_norm=True, n_power_iterations=5):
+
         super(SubPixelDownsamplingBlock, self).__init__()
         out_channels = in_channels if out_channels is None else out_channels
+
+
+        self.activation = activation(inplace=True) if activation is not None else None
 
         self.conv = conv3x3(in_channels, out_channels // (downscale_factor * downscale_factor), stride=1, bias=True,
                             spectral_norm=spectral_norm, n_power_iterations =n_power_iterations)
@@ -139,5 +144,8 @@ class SubPixelDownsamplingBlock(nn.Module):
 
         x = self.conv(x)
         x = self.pixel_unshuffle(x)
+
+        if self.activation is not None:
+            x = self.activation(x)
 
         return x

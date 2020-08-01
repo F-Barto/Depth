@@ -80,7 +80,7 @@ class ResNet(nn.Module):
         if self.invertible:
             if stride != 1:
                 layers.append(SubPixelDownsamplingBlock(self.inplanes, out_channels=planes, downscale_factor=2,
-                                                        spectral_norm=True, **kwargs))
+                                                        activation=activation, spectral_norm=True, **kwargs))
             else:
                 layers.append(block(self.inplanes, planes, activation, **kwargs))
 
