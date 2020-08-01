@@ -88,6 +88,8 @@ def prep_image(image):
     if is_tensor(image):
         image = image.detach().permute(1, 2, 0).cpu().numpy()
 
+    if image.shape[-1] == 1:
+        return image[:,:,0]
     return image
 
 def prep_rgb(key, batch, i=0):
