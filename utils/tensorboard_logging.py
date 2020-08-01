@@ -32,6 +32,9 @@ def gridplot(imgs, titles=[], cmaps=[], cols=2, figsize=(12, 12)):
             ax.set_visible(False)
             continue
 
+        if img.shape[-1] == 1 and cmap is None:
+            cmap = 'gray'
+
         ax.imshow(img, cmap=cmap)
         ax.set_title(title)
         ax.axis('off')
@@ -88,8 +91,6 @@ def prep_image(image):
     if is_tensor(image):
         image = image.detach().permute(1, 2, 0).cpu().numpy()
 
-    if image.shape[-1] == 1:
-        return image[:,:,0]
     return image
 
 def prep_rgb(key, batch, i=0):
