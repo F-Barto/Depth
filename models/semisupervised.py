@@ -12,10 +12,12 @@ What data to use (train_dataloader, val_dataloader, test_dataloader)
 
 import torch
 from torch.utils.data import DataLoader
+from torch.utils.data.dataloader  import default_collate
+
+
 import pytorch_lightning as pl
 from pytorch_lightning import _logger as terminal_logger
 from pytorch_lightning.core.decorators import auto_move_data
-
 
 from networks.packnet.packnet import PackNet01
 from networks.packnet.posenet import PoseNet
@@ -141,17 +143,18 @@ class MonocularSemiSupDepth(pl.LightningModule):
             assert hparams.datasets.train.load_pose == False, \
                 'GT translation magnitude should not be load if no velocity supervision.'
 
-    def compute_inv_depths(self, image, sparse_depth=None):
+    def compute_inv_depths(self, image, sparse_depth=None, nn_diff_pts_3d=None, pixel_idxs=None, nn_pixel_idxs=None):
         """Computes inverse depth maps from single images"""
 
         if sparse_depth is None:
             inv_depths = self.depth_net(image)
+        elif nn_diff_pts_3d is not None:
+            inv_depths = self.depth_net(image, sparse_depth, nn_diff_pts_3d, pixel_idxs, nn_pixel_idxs)
         else:
             inv_depths = self.depth_net(image, sparse_depth)
 
         inv_depths = inv_depths if is_list(inv_depths) else [inv_depths]
 
-        # already done in loss computation
         if self.hparams.upsample_depth_maps:
             inv_depths = interpolate_scales(inv_depths, mode='nearest')
 
@@ -226,13 +229,17 @@ class MonocularSemiSupDepth(pl.LightningModule):
             Dictionary containing predicted inverse depth maps and poses
         """
 
-        if "guiding" in self.hparams.model.depth_net.name:
-            sparse_depth = batch['sparse_projected_lidar']
+        if batch.get('nn_diff_pts_3d', None) is not None:
+            inv_depths = self.compute_inv_depths(batch['target_view'],
+                                                 sparse_depth=batch['sparse_projected_lidar'],
+                                                 nn_diff_pts_3d=batch['nn_diff_pts_3d'],
+                                                 pixel_idxs=batch['pixel_idxs'],
+                                                 nn_pixel_idxs=batch['nn_pixel_idxs'])
+        elif "guiding" in self.hparams.model.depth_net.name:
+            inv_depths = self.compute_inv_depths(batch['target_view'], sparse_depth=batch['sparse_projected_lidar'])
         else:
-            sparse_depth = None
+            inv_depths = self.compute_inv_depths(batch['target_view'])
 
-
-        inv_depths = self.compute_inv_depths(batch['target_view'], sparse_depth=sparse_depth)
 
         poses = None
         if 'source_views' in batch and self.pose_net is not None:
@@ -556,6 +563,67 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         return {'optimizer': optimizer, 'lr_scheduler': scheduler}
 
+    def custom_collate(self, batch):
+        """
+        Override `default_collate` https://pytorch.org/docs/stable/_modules/torch/utils/data/dataloader.html#DataLoader
+
+        Reference:
+        def default_collate(batch) at https://pytorch.org/docs/stable/_modules/torch/utils/data/dataloader.html#DataLoader
+        https://discuss.pytorch.org/t/how-to-create-a-dataloader-with-variable-size-input/8278/3
+        https://github.com/pytorch/pytorch/issues/1512
+
+        We need our own collate function that wraps things up (imge, mask, label).
+
+        In this setup,  batch is a list of tuples (the result of calling: img, mask, label = Dataset[i].
+        The output of this function is four elements:
+            . data: a pytorch tensor of size (batch_size, c, h, w) of float32 . Each sample is a tensor of shape (c, h_,
+            w_) that represents a cropped patch from an image (or the entire image) where: c is the depth of the patches (
+            since they are RGB, so c=3),  h is the height of the patch, and w_ is the its width.
+            . mask: a list of pytorch tensors of size (batch_size, 1, h, w) full of 1 and 0. The mask of the ENTIRE image (no
+            cropping is performed). Images does not have the same size, and the same thing goes for the masks. Therefore,
+            we can't put the masks in one tensor.
+            . target: a vector (pytorch tensor) of length batch_size of type torch.LongTensor containing the image-level
+            labels.
+        :param batch: list of tuples (img, mask, label)
+        :return: 3 elements: tensor data, list of tensors of masks, tensor of labels.
+        """
+
+        continuous_conv_collate = batch[0].get('nn_pixel_idxs',None) is not None
+
+        if not continuous_conv_collate:
+            return default_collate(batch)
+
+        nb_scales = len(batch[0]['nn_pixel_idxs'])
+
+        # changing order of access, in: batch[n]['nn_pixel_idxs][s] -> out: batch['nn_pixel_idxs][s][n]
+        nn_pixel_idxs = [[] for _ in range(nb_scales)]
+        pixel_idxs = [[] for _ in range(nb_scales)]
+        nn_diff_pts_3d = [[] for _ in range(nb_scales)]
+
+        for elem in batch:
+            tmp_nn_pixel_idxs = elem.pop('nn_pixel_idxs')
+            tmp_pixel_idxs = elem.pop('pixel_idxs')
+            tmp_diff_pts_3d = elem.pop('nn_diff_pts_3d')
+
+            for s in range(nb_scales):
+                nn_pixel_idxs[s].append(tmp_nn_pixel_idxs[s])
+                pixel_idxs[s].append(tmp_pixel_idxs[s])
+                nn_diff_pts_3d[s].append(tmp_diff_pts_3d[s])
+
+        # collating by scale
+        nn_pixel_idxs = [default_collate(scale) for scale in nn_pixel_idxs]
+        pixel_idxs = [default_collate(scale) for scale in pixel_idxs]
+        nn_diff_pts_3d = [default_collate(scale) for scale in nn_diff_pts_3d]
+
+        out = default_collate(batch)
+
+        out['nn_pixel_idxs'] = nn_pixel_idxs
+        out['pixel_idxs'] = pixel_idxs
+        out['nn_diff_pts_3d'] = nn_diff_pts_3d
+
+        return out
+
+
     def train_dataloader(self):
         # REQUIRED
         return DataLoader(self.train_dataset,
@@ -563,6 +631,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                           shuffle=True,
                           pin_memory=True,
                           num_workers=16,
+                          collate_fn=self.custom_collate
                           )
 
 
@@ -573,6 +642,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                           shuffle=False,
                           pin_memory=True,
                           num_workers=16,
+                          collate_fn=self.custom_collate
                           )
     def test_dataloader(self):
         # REQUIRED
@@ -581,4 +651,5 @@ class MonocularSemiSupDepth(pl.LightningModule):
                           shuffle=False,
                           pin_memory=True,
                           num_workers=16,
+                          collate_fn=self.custom_collate
                           )

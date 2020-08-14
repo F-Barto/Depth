@@ -7,6 +7,7 @@ from networks.monodepth2.layers.depth_decoder import DepthDecoder
 from networks.monodepth2.layers.common import disp_to_depth, get_activation
 from networks.pac import PacConv2d
 from networks.attention_guidance import AttentionGuidance
+from networks.continuous_convolution import ContinuousFusion
 
 from utils.depth import depth2inv
 
@@ -32,7 +33,7 @@ class GuidedDepthResNet(nn.Module):
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
-        assert guidance in ['pac', 'attention']
+        assert guidance in ['pac', 'attention', 'continuous']
 
         self.inverse_lidar_input = inverse_lidar_input
 
@@ -46,7 +47,7 @@ class GuidedDepthResNet(nn.Module):
                                            n_power_iterations=n_power_iterations)
 
         self.num_ch_enc = self.encoder.num_ch_enc
-        skip_features_factor = 2 if 'concat' in attention_scheme else 1
+        skip_features_factor = 2 if ('concat' in attention_scheme) or (guidance == 'continuous') else 1
         self.num_ch_skips = [skip_features_factor * num_ch for num_ch in self.num_ch_enc]
 
         # at each resblock fuse with guidance the features of both encoders
@@ -59,6 +60,8 @@ class GuidedDepthResNet(nn.Module):
                 self.guidances.update({f"guidance_{i}" : PacConv2d(num_ch, num_ch, 3, padding=1, native_impl=False)})
             elif guidance == 'attention':
                 self.guidances.update({f"guidance_{i}": AttentionGuidance(num_ch, activation_cls, attention_scheme)})
+            elif guidance == 'continuous':
+                self.guidances.update({f"guidance_{i}": ContinuousFusion(num_ch * 2, activation_cls)})
             else:
                 print(f"guidance {guidance} not implemented")
 
@@ -66,7 +69,7 @@ class GuidedDepthResNet(nn.Module):
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=120.0)
 
-    def forward(self, cam_input, lidar_input):
+    def forward(self, cam_input, lidar_input, nn_diff_pts_3d=None, pixel_idxs=None, nn_pixel_idxs=None):
         """
         Runs the network and returns inverse depth maps
         (4 scales if training and 1 if not).
@@ -80,7 +83,13 @@ class GuidedDepthResNet(nn.Module):
 
         self.guided_features = []
         for i in range(len(self.num_ch_enc)):
-            guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i])
+
+            if nn_diff_pts_3d is not None: # continuous guidance
+                guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i],
+                                                                 nn_diff_pts_3d[i], pixel_idxs[i], nn_pixel_idxs[i])
+            else:
+                guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i])
+
             self.guided_features.append(guided_feature)
 
         x = self.decoder(self.guided_features)
