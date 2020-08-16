@@ -28,7 +28,8 @@ class GuidedDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='pac', attention_scheme='res-sig',
-                 inverse_lidar_input=True, preact=False, invertible=False, n_power_iterations=5, **kwargs):
+                 inverse_lidar_input=True, preact=False, invertible=False, n_power_iterations=5, no_maxpool=False,
+                 **kwargs):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
@@ -43,7 +44,7 @@ class GuidedDepthResNet(nn.Module):
         self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels, activation=activation_cls,
                                      preact=preact, invertible=invertible, n_power_iterations=n_power_iterations)
         self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1, activation=activation_cls,
-                                           no_first_norm=True, preact=preact, invertible=invertible,
+                                           no_first_norm=True, no_maxpool=no_maxpool, preact=preact, invertible=invertible,
                                            n_power_iterations=n_power_iterations)
 
         self.num_ch_enc = self.encoder.num_ch_enc
