@@ -9,13 +9,14 @@ from networks.monodepth2.layers.common import SubPixelDownsamplingBlock
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
-                 norm_layer=None, input_channels=3, no_first_norm=False, preact=False, invertible=False, **kwargs):
+                 norm_layer=None, input_channels=3, no_first_norm=False, no_maxpool=False, preact=False, invertible=False, **kwargs):
         super(ResNet, self).__init__()
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
+        self.no_maxpool = no_maxpool
         self.no_first_norm = no_first_norm
         self.preact = preact
         self.invertible = invertible
@@ -38,7 +39,14 @@ class ResNet(nn.Module):
         if self.invertible:
             self.pooling = PixelUnshuffle(2)
         else:
-            self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+            if not self.no_maxpool:
+                self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+            else:
+                self.pooling = nn.Sequential(
+                    conv1x1(self.inplanes, self.inplanes, stride=2),
+                    norm_layer(self.inplanes),
+                    activation(inplace=True)
+                )
 
         ############### body ###############
         self.layer1 = self._make_layer(block, 64, layers[0], activation, **kwargs)

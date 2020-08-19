@@ -73,7 +73,7 @@ class AttentionGuidance(nn.Module):
         else:
             raise ValueError(f'Attention scheme invalid either res or mult: {self.attention_scheme}')
 
-    def forward(self, image_features, lidar_features):
+    def forward(self, image_features, lidar_features, **kwargs):
 
         c = torch.cat([image_features, lidar_features], dim=1)
 

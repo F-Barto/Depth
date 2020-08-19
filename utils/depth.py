@@ -56,7 +56,7 @@ def inv2depth(inv_depth):
     if is_seq(inv_depth):
         return [inv2depth(item) for item in inv_depth]
     else:
-        return 1. / inv_depth.clone().clamp(min=1e-6)
+        return 1. / inv_depth.clamp(min=1e-6)
 
 
 def depth2inv(depth):
@@ -74,7 +74,7 @@ def depth2inv(depth):
     if is_seq(depth):
         return [depth2inv(item) for item in depth]
     else:
-        inv_depth = 1. / depth.clone().clamp(min=1e-6)
+        inv_depth = 1. / depth.clamp(min=1e-6)
         inv_depth[depth <= 0.] = 0.
         return inv_depth
 
