@@ -383,7 +383,6 @@ class RandCamSequentialArgoverseLoader(Dataset):
             sample['nn_diff_pts_3d'] = nn_diff_pts_3d
 
 
-
         if self.data_transform is not None:
             self.data_transform(sample, **self.data_transform_options)
 

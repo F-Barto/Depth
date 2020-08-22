@@ -13,6 +13,203 @@ GT_DEPTH = 'projected_lidar'
 SPARSE_DEPTH = 'sparse_projected_lidar'
 DEPTH_KEYS = [GT_DEPTH, SPARSE_DEPTH]
 
+
+class LidarDropBlock2D():
+    r"""
+    Randomly zeroes 2D spatial blocks of the input image.
+
+    Inspired by
+        _DropBlock: A regularization method for convolutional networks
+        (https://arxiv.org/abs/1810.12890)
+
+    Args:
+        drop_prob (float): probability of an element to be dropped.
+        block_size (int): size of the block to drop
+
+    Shape:
+        - Input: `(H, W)`
+        - Output: `(H, W)`
+    """
+
+    def __init__(self, drop_prob, block_size, height, width):
+        super().__init__()
+
+        self.drop_prob = drop_prob
+        self.block_size = block_size
+
+        self.pad = self.block_size // 2
+        self.rounded_block_size = self.pad * 2
+
+        self.kernel_size = (self.block_size, self.block_size)
+
+        self.valid_area = (height - self.block_size // 2 + 1) * (width - self.block_size // 2 + 1)
+        self.gamma = (self.drop_prob / self.block_size ** 2) * ((height * width) / self.valid_area)
+
+        self.valid_region = (height - self.rounded_block_size, width - self.rounded_block_size)
+
+    def drop(self, x, return_mask=False):
+
+        assert x.ndim == 2, \
+            "Expected input with 2 dimensions (height, width, )"
+
+        if self.drop_prob == 0.:
+            return x
+        else:
+
+            # bernouli sampling of block centers on valid region
+            mask_valid = np.random.rand(*self.valid_region)
+            mask_valid = mask_valid < self.gamma
+            mask = np.pad(mask_valid, self.pad, constant_values=0)
+
+            block_mask = self.compute_block_mask(mask)
+
+            # apply block mask
+            out = x * block_mask
+
+            if return_mask:
+                return out, block_mask
+
+            return out
+
+    def compute_block_mask(self, mask):
+
+        sampled_indexes = np.array(np.nonzero(mask)).T
+
+        block_mask = np.ones(mask.shape)
+
+        for sampled_index in sampled_indexes:
+            y, x = sampled_index
+
+            upper_left_y = y + self.block_size // 2
+            upper_left_x = x - self.block_size // 2
+
+            bottom_left_y = y - self.block_size // 2
+            bottom_left_x = x + self.block_size // 2
+
+            cv2.rectangle(block_mask,  # source image
+                          (upper_left_x, upper_left_y),  # upper left corner vertex
+                          (bottom_left_x, bottom_left_y),  # lower right corner vertex
+                          0,  # color
+                          thickness=-1,  # filling
+                          )
+
+        return block_mask
+
+    def run_stats(self, n=1000):
+        from pprint import pprint
+
+        cum = {}
+
+        for _ in range(n):
+            mask_valid = np.random.rand(*self.valid_region)
+            mask_valid = mask_valid < self.gamma
+
+            nb_sampled_pts = mask_valid.sum()
+
+            cum[nb_sampled_pts] = cum.get(nb_sampled_pts, 0) + 1
+
+        pprint(cum)
+        pprint({k: v / n * 100 for k, v in cum.items()})
+
+
+class LidarDropCircle2D():
+    r"""
+    Randomly zeroes 2D spatial blocks of the input image.
+
+    Inspired by
+        _DropBlock: A regularization method for convolutional networks
+        (https://arxiv.org/abs/1810.12890)
+
+    Args:
+        drop_prob (float): probability of an element to be dropped.
+        block_size (int): size of the block to drop
+
+    Shape:
+        - Input: `(H, W)`
+        - Output: `(H, W)`
+    """
+
+    def __init__(self, drop_prob, block_size, height, width):
+        super().__init__()
+
+        self.drop_prob = drop_prob
+        self.block_size = block_size
+
+        self.pad = self.block_size // 2
+        self.rounded_block_size = self.pad * 2
+
+        self.kernel_size = (self.block_size, self.block_size)
+
+        self.valid_area = (height - self.block_size // 2 + 1) * (width - self.block_size // 2 + 1)
+
+        block_area = np.pi * (self.block_size // 2) ** 2
+        self.gamma = (self.drop_prob / block_area) * ((height * width) / self.valid_area)
+
+        self.valid_region = (height - self.rounded_block_size, width - self.rounded_block_size)
+
+    def drop(self, x, return_mask=False):
+
+        assert x.ndim == 2, \
+            "Expected input with 2 dimensions (height, width, )"
+
+        if self.drop_prob == 0.:
+            return x
+        else:
+
+            # bernouli sampling of block centers on valid region
+            mask_valid = np.random.rand(*self.valid_region)
+            mask_valid = mask_valid < self.gamma
+            mask = np.pad(mask_valid, self.pad, constant_values=0)
+
+            block_mask = self.compute_block_mask(mask)
+
+            # apply block mask
+            out = x * block_mask
+
+            if return_mask:
+                return out, block_mask
+
+            return out
+
+    def compute_block_mask(self, mask):
+
+        sampled_indexes = np.array(np.nonzero(mask)).T
+
+        block_mask = np.ones(mask.shape)
+
+        radius = self.block_size // 2
+
+        for sampled_index in sampled_indexes:
+            y, x = sampled_index
+
+            cv2.circle(
+                block_mask,  # source image
+                (x, y),  # center
+                radius,  # radius
+                0,  # color or border
+                thickness=-1,  # line thickness
+            )
+
+        return block_mask
+
+    def run_stats(self, n=1000):
+        from pprint import pprint
+
+        cum = {}
+
+        for _ in range(n):
+            mask_valid = np.random.rand(*self.valid_region)
+            mask_valid = mask_valid < self.gamma
+
+            nb_sampled_pts = mask_valid.sum()
+
+            cum[nb_sampled_pts] = cum.get(nb_sampled_pts, 0) + 1
+
+        pprint(cum)
+        pprint({k: v / n * 100 for k, v in cum.items()})
+
+
+
 def resize_image(image, shape, interpolation=Image.ANTIALIAS):
     """
     Resizes input image.
@@ -146,7 +343,7 @@ def to_tensor_sample(sample, tensor_type='torch.FloatTensor'):
     """
 
     # Convert single items
-    for key in ([TARGET_VIEW, TARGET_VIEW + '_original'] + DEPTH_KEYS):
+    for key in ([TARGET_VIEW, TARGET_VIEW + '_original', SPARSE_DEPTH + '_original'] + DEPTH_KEYS):
         if sample.get(key) is not None:
             sample[key] = to_tensor(sample[key], tensor_type)
 
@@ -179,6 +376,11 @@ def duplicate_sample(sample):
     # Duplicate source view images
     key = SOURCE_VIEWS
     sample[f'{key}_original'] = [k.copy() for k in sample[key]]
+
+    # Duplicate (?) sparse projected lidar image
+    key = SPARSE_DEPTH
+    if sample.get(key) is not None:
+        sample[f'{key}_original'] = sample[key].copy()
 
     # Return duplicated sample
     return sample
@@ -220,9 +422,61 @@ def colorjitter_sample(sample, parameters, prob=1.0):
     # Return jittered (?) sample
     return sample
 
+
+def sparse_lidar_drop(sample,  height, width, drop_scheme, drop_prob, drop_size=50):
+    """
+    Jitters input images as data augmentation.
+    Parameters
+    ----------
+    sample : dict
+        Input sample
+    parameters : tuple (brightness, contrast, saturation, hue)
+        Color jittering parameters
+    prob : float
+        Jittering probability
+    Returns
+    -------
+    sample : dict
+        Jittered sample
+    """
+
+    print('*'*60)
+    print(sample)
+    print(f"height, width: {height}, {width}")
+    print(f"drop_scheme, drop_prob, drop_size: {drop_scheme}, {drop_prob}, {drop_size}")
+
+    assert drop_scheme in ['circle', 'block', 'full']
+
+    key = SPARSE_DEPTH
+
+    if sample.get(sample, None) is None or drop_prob == 0.:
+        return sample
+
+    if drop_scheme == 'full':
+        if np.random.rand(1) < drop_prob:
+            sample[key] = np.zeros(sample[key].shape)
+        return sample
+
+    if drop_scheme == 'block':
+        lidar_drop = LidarDropBlock2D(drop_prob, drop_size, height, width)
+    else: # drop_scheme == 'circle'
+        lidar_drop = LidarDropCircle2D(drop_prob, drop_size, height, width)
+
+    # sparse projected lidar is given as shape (H, W, 1)
+    sample_lidar = sample[key]
+
+    if sample_lidar.ndim == 3:
+        sample_lidar = sample_lidar[:,:,0]
+
+    dropped_lidar = lidar_drop.drop(sample_lidar)
+
+    sample[key] = np.expand_dims(dropped_lidar, axis=2)
+
+    return sample
+
 ###################################################
 
-def train_transforms(sample, image_shape, jittering=None):
+def train_transforms(sample, image_shape, jittering=None, lidar_drop=None):
     """
     Training data augmentation transformations
     Parameters
@@ -241,9 +495,15 @@ def train_transforms(sample, image_shape, jittering=None):
     image_shape = tuple(image_shape)
     sample = resize_sample(sample, image_shape)
     sample = duplicate_sample(sample)
+
     if jittering is not None and len(jittering) > 0:
         jittering = tuple(jittering)
         sample = colorjitter_sample(sample, jittering)
+
+    if lidar_drop is not None:
+        sample = sparse_lidar_drop(sample, *image_shape, *lidar_drop)
+
+
     sample = to_tensor_sample(sample)
     return sample
 
