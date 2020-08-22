@@ -440,16 +440,11 @@ def sparse_lidar_drop(sample,  height, width, drop_scheme, drop_prob, drop_size=
         Jittered sample
     """
 
-    print('*'*60)
-    print(sample)
-    print(f"height, width: {height}, {width}")
-    print(f"drop_scheme, drop_prob, drop_size: {drop_scheme}, {drop_prob}, {drop_size}")
-
     assert drop_scheme in ['circle', 'block', 'full']
 
     key = SPARSE_DEPTH
 
-    if sample.get(sample, None) is None or drop_prob == 0.:
+    if sample.get(key, None) is None or drop_prob == 0.:
         return sample
 
     if drop_scheme == 'full':
@@ -501,6 +496,7 @@ def train_transforms(sample, image_shape, jittering=None, lidar_drop=None):
         sample = colorjitter_sample(sample, jittering)
 
     if lidar_drop is not None:
+
         sample = sparse_lidar_drop(sample, *image_shape, *lidar_drop)
 
 
