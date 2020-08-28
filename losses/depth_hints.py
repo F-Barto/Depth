@@ -62,7 +62,8 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
     def calc_depth_hints_loss(self, depth_hints_masks, inv_depths, gt_depths, K, pose, progress=0.0):
 
         if self.supervised_method == 'reprojected':
-            supervised_losses = self.supervised_loss(inv_depths, gt_depths, K, pose, valid_masks=depth_hints_masks,
+            depths = [inv2depth(inv_depths[i]) for i in range(self.n)]
+            supervised_losses = self.supervised_loss(depths, gt_depths, K, pose, valid_masks=depth_hints_masks,
                                                      progress=progress)
         else:
             supervised_losses = self.supervised_loss(inv_depths, gt_depths, valid_masks=depth_hints_masks)

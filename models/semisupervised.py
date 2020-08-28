@@ -267,7 +267,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                     batch['target_view_original'],
                     batch['source_views_original'],
                     preds['inv_depths'],
-                    batch['sparse_projected_lidar'],
+                    batch['sparse_projected_lidar_original'],
                     batch['intrinsics'],
                     preds['poses'],
                     progress=progress)
@@ -288,7 +288,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
                 if self.hparams.losses.get('supervised_loss_weight', 0.0) > 0.0:
                     # Calculate and weight supervised loss
-                    sup_output = self.supervised_loss(preds['inv_depths'], batch['sparse_projected_lidar'],
+                    sup_output = self.supervised_loss(preds['inv_depths'], batch['sparse_projected_lidar_original'],
                                                       batch['intrinsics'], preds['poses'], progress=progress)
 
                     losses.append(self.supervised_loss_weight * sup_output['loss'])
