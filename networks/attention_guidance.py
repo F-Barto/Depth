@@ -1,4 +1,5 @@
 from torch import nn
+import torch.nn.functionnal as F
 import torch
 
 
@@ -12,6 +13,9 @@ class AttentionBlock(nn.Module):
             self.act = nn.Sigmoid()
         elif 'tan' in attention_scheme:
             self.act = nn.Tanh()
+        elif 'softmax' in attention_scheme:
+            # if we use softmax, it will be used later, so for now just make it the usual conv + bn + activation
+            self.act = activation_cls(inplace=True)
         else:
             raise ValueError(f'Last activation choice invalid either sig or tanh: {attention_scheme}')
 
@@ -61,12 +65,25 @@ class AttentionGuidance(nn.Module):
             self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
             self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
 
+        if 'softmax' in attention_scheme:
+            self.softmax = torch.nn.Softmax(dim=0)
+
         self.attention_scheme = attention_scheme
 
     def fuse_features(self, original_features, attentive_masks):
         if 'res' in self.attention_scheme:
             residual_features = [of * am + of for of,am in zip(original_features, attentive_masks)]
             return sum(residual_features)
+        elif 'softmax' in self.attention_scheme:
+
+            if 'gsoftmax' in self.attention_scheme:
+                # reduce to BxCx1x1 through global average pooling
+                attentive_masks = [am.mean([2, 3], keepdim=True) for am in attentive_masks]
+
+            concat_attentive_masks = torch.stack(attentive_masks, dim=0)
+            weights = self.softmax(concat_attentive_masks)
+            features = [of * w for of, w in zip(original_features, weights)]
+            return sum(features)
         elif 'mult' in self.attention_scheme:
             features = [of * am for of, am in zip(original_features, attentive_masks)]
             return sum(features)
