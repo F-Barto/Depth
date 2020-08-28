@@ -31,7 +31,6 @@ VEHICLE_CALIBRATION_INFO_FILENAME = 'vehicle_calibration_info.json'
 
 def determine_valid_cam_coords(uv, uv_cam, img_width, img_height):
     """
-
     adatpted from argoverse-api
 
     Given a set of coordinates in the image plane and corresponding points
@@ -42,7 +41,7 @@ def determine_valid_cam_coords(uv, uv_cam, img_width, img_height):
     front of the camera frustum).
     Args:
        uv: Numpy array of shape (N,2)
-       uv_cam: Numpy array of shape (N,3)
+       uv_cam: Numpy array of shape (3, N) (or 4xN if homogeneous)
        img_width: width of image on whish the projection is done
        img_height: height of image on whish the projection is done
     Returns:
@@ -161,8 +160,6 @@ def compute_multi_scale_continuous_conv_prerequisites(camera_config, scales, lid
         # the 3D coordinates of the difference
         nn_diff_pts_3d = [np.expand_dims(pts_3d - pts_3d[nn_idxs[:, k]], axis=1) for k in range(K)]
         nn_diff_pts_3d = np.concatenate(nn_diff_pts_3d, axis=1)
-
-
 
         by_scale_nn_pixel_idxs.append(nn_pixel_idxs)
         by_scale_pixel_idxs.append(pixel_idxs)
