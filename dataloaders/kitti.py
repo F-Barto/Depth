@@ -27,6 +27,7 @@ from pytorch_lightning import _logger as terminal_logger
 
 KITTI_RAW_LEFT_STEREO_IMAGE_DIR = 'image_02/data'
 PROJECTED_VELODYNE_DIR = 'proj_depth/velodyne/image_02'
+PROJECTED_GROUNDTRUTH_DIR = 'proj_depth/groundtruth/image_02'
 INTRINSICS_MATRIX = 'P_rect_02'
 CAMERA_CALIBRATION_FILE_NAME = 'calib_cam_to_cam.txt'
 
@@ -50,8 +51,9 @@ class SequentialKittiLoader(Dataset):
         Prints the animals name and what sound it makes
     """
 
-    def __init__(self, kitti_root_dir, split_file_path, depth_root_dir=None, data_transform=None,
-                 data_transform_options=None, source_views_indexes=[-1, 1], load_pose=True, input_channels=3):
+    def __init__(self, kitti_root_dir, split_file_path, gt_depth_root_dir=None, sparse_depth_root_dir=None,
+                 data_transform=None, data_transform_options=None, source_views_indexes=[-1, 1], load_pose=True,
+                 input_channels=3):
 
         """
         Parameters
@@ -93,12 +95,21 @@ class SequentialKittiLoader(Dataset):
         if data_transform is not None:
             assert data_transform_options is not None
 
-        self.load_depth = False
-        if depth_root_dir is not None:
-            assert Path(depth_root_dir).exists(), depth_root_dir
-            self.depth_root_dir = depth_root_dir
-            self.load_depth = True
-            terminal_logger.info(f"The depth from LiDAR data of each frame will be loaded from {depth_root_dir}.")
+        if gt_depth_root_dir is not None:
+            gt_depth_root_dir = Path(gt_depth_root_dir)
+            assert gt_depth_root_dir.exists(), gt_depth_root_dir
+            self.gt_depth_root_dir = gt_depth_root_dir
+            terminal_logger.info(
+                f"The GT depth from LiDAR data of each frame will be loaded from {str(gt_depth_root_dir)}.")
+
+        self.load_sparse_depth = False
+        if sparse_depth_root_dir is not None:
+            sparse_depth_root_dir = Path(sparse_depth_root_dir)
+            assert sparse_depth_root_dir.exists(), sparse_depth_root_dir
+            self.sparse_depth_root_dir = sparse_depth_root_dir
+            self.load_sparse_depth = True
+            terminal_logger.info(
+                f"The sparse depth from LiDAR data of each frame will be loaded from {str(sparse_depth_root_dir)}.")
 
         src_indexes_err_msg = "It is expected the source index list is in ascending order and does not contains 0 " \
                               "(corresponding to the target)\n " \
@@ -406,6 +417,14 @@ class SequentialKittiLoader(Dataset):
         depth = np.load(file)['velodyne_depth'].astype(np.float32)
         return np.expand_dims(depth, axis=2)
 
+    def read_png_depth(self, file):
+        """Reads a .png depth map."""
+        depth_png = np.array(Image.open(file), dtype=int)
+        assert (np.max(depth_png) > 255), 'Wrong .png depth file'
+        depth = depth_png.astype(np.float) / 256.
+        depth[depth_png == 0] = -1.
+        return np.expand_dims(depth, axis=2)
+
     def __getitem__(self, idx):
         img_path, source_views_paths = self.samples_and_source_views_paths[idx]
 
@@ -430,14 +449,20 @@ class SequentialKittiLoader(Dataset):
         frame_idx = Path(img_path).stem
         sample['filename'] = f"{capture_date}_{sequence_idx}_{frame_idx}"
 
-        if self.load_depth:
+        if 'val' in self.split_name or 'test' in self.split_name:
+            projected_lidar_path = Path(self.gt_depth_root_dir) / capture_date \
+                    / f"{capture_date}_drive_{sequence_idx}_sync" / PROJECTED_GROUNDTRUTH_DIR / f"{frame_idx}.npz"
+            projected_lidar = self.read_png_depth(projected_lidar_path)
+            sample['projected_lidar'] = projected_lidar
+
+        if self.load_sparse_depth:
             # assumes the depth files are stored in the same format as KITTI_raw:
             # depth_root_dir/2011_09_26/2011_09_26_drive_0048_sync/proj_depth/velodyne/image_02/0000000085.npz
-            depth_path = Path(self.depth_root_dir) / capture_date / f"{capture_date}_drive_{sequence_idx}_sync" \
-                         / PROJECTED_VELODYNE_DIR / f"{frame_idx}.npz"
+            depth_path = Path(self.sparse_depth_root_dir) / capture_date \
+                         / f"{capture_date}_drive_{sequence_idx}_sync" / PROJECTED_VELODYNE_DIR / f"{frame_idx}.npz"
 
             depth = self.read_npz_depth(str(depth_path))
-            sample['projected_lidar'] =  depth
+            sample['sparse_projected_lidar'] =  depth
 
 
         if self.data_transform is not None:

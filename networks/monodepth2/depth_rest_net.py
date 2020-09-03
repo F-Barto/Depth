@@ -22,7 +22,7 @@ class DepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, num_layers=18, input_channels=3, activation='relu', preact=False, invertible=False,
-                 n_power_iterations=5, no_maxpool=, **kwargs):
+                 n_power_iterations=5, no_maxpool=False, **kwargs):
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
