@@ -450,8 +450,15 @@ class SequentialKittiLoader(Dataset):
         sample['filename'] = f"{capture_date}_{sequence_idx}_{frame_idx}"
 
         if 'val' in self.split_name or 'test' in self.split_name:
-            projected_lidar_path = Path(self.gt_depth_root_dir) / capture_date \
-                    / f"{capture_date}_drive_{sequence_idx}_sync" / PROJECTED_GROUNDTRUTH_DIR / f"{frame_idx}.png"
+
+            path_suffix = capture_date / f"{capture_date}_drive_{sequence_idx}_sync" \
+                          / PROJECTED_GROUNDTRUTH_DIR / f"{frame_idx}.png"
+
+            projected_lidar_path = Path(self.gt_depth_root_dir) / 'val' / path_suffix
+
+            if not projected_lidar_path.exists:
+                projected_lidar_path = Path(self.gt_depth_root_dir) / 'train' / path_suffix
+
             projected_lidar = self.read_png_depth(projected_lidar_path)
             sample['projected_lidar'] = projected_lidar
 
