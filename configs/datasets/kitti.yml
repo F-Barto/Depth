@@ -1,5 +1,5 @@
 kitti_root_dir: /home/clear/fbartocc/data/KITTI_raw
-gt_depth_root_dir: /home/clear/fbartocc/data/KITTI_TRI_DEPTH/KITTI_raw_velodyne
+gt_depth_root_dir: /home/clear/fbartocc/data/KITTI_TRI_DEPTH/KITTI_raw_groundtruth
 sparse_depth_root_dir: /home/clear/fbartocc/data/KITTI_TRI_DEPTH/KITTI_raw_velodyne
 data_split_dir: /home/clear/fbartocc/depth_project/Depth/data_splits
 
