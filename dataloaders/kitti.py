@@ -451,8 +451,8 @@ class SequentialKittiLoader(Dataset):
 
         if 'val' in self.split_name or 'test' in self.split_name:
 
-            path_suffix = capture_date / f"{capture_date}_drive_{sequence_idx}_sync" \
-                          / PROJECTED_GROUNDTRUTH_DIR / f"{frame_idx}.png"
+            path_suffix = f"{capture_date}/{capture_date}_drive_{sequence_idx}_sync/" \
+                          f"{PROJECTED_GROUNDTRUTH_DIR}/{frame_idx}.png"
 
             projected_lidar_path = Path(self.gt_depth_root_dir) / 'val' / path_suffix
 
