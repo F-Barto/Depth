@@ -1,13 +1,15 @@
+kitti_root_dir: /home/clear/fbartocc/data/KITTI_raw
 gt_depth_root_dir: /home/clear/fbartocc/data/KITTI_TRI_DEPTH/KITTI_raw_velodyne
 sparse_depth_root_dir: /home/clear/fbartocc/data/KITTI_TRI_DEPTH/KITTI_raw_velodyne
+data_split_dir: /home/clear/fbartocc/depth_project/Depth/data_splits
 
 datasets:
     dataset_name: kitti
 
     train:
       source_views_indexes: [-1, 1]
-      kitti_root_dir: /home/clear/fbartocc/data/KITTI_raw
-      split_file_path: /home/clear/fbartocc/depth_project/Depth/data_splits/eigen_train_files.txt
+      kitti_root_dir: ${kitti_root_dir}
+      split_file_path: ${data_split_dir}/eigen_train_files.txt
       sparse_depth_root_dir: ${sparse_depth_root_dir}
       data_transform_options: # augmentation options
         image_shape: [192, 640] # tuples are not handled by ruamel.yaml
@@ -15,8 +17,8 @@ datasets:
 
     val:
       source_views_indexes: [] # val don't need the PoseNet
-      kitti_root_dir: /home/clear/fbartocc/data/KITTI_raw
-      split_file_path: /home/clear/fbartocc/depth_project/Depth/data_splits/eigen_val_files.txt
+      kitti_root_dir: ${kitti_root_dir}
+      split_file_path: ${data_split_dir}/eigen_val_files.txt
       sparse_depth_root_dir: ${sparse_depth_root_dir}
       gt_depth_root_dir: ${gt_depth_root_dir}
       data_transform_options: # augmentation options
@@ -24,8 +26,8 @@ datasets:
 
     test:
       source_views_indexes: [] # test don't need the PoseNet
-      kitti_root_dir: /home/clear/fbartocc/data/KITTI_raw
-      split_file_path: /home/clear/fbartocc/depth_project/Depth/data_splits/eigen_test_files.txt
+      kitti_root_dir: ${kitti_root_dir}
+        split_file_path: ${data_split_dir}/eigen_test_files.txt
       sparse_depth_root_dir: ${sparse_depth_root_dir}
       gt_depth_root_dir: ${gt_depth_root_dir}
       data_transform_options: # augmentation options
