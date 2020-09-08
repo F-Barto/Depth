@@ -218,9 +218,9 @@ def compute_depth_metrics(gt, pred, crop='garg', min_depth=0.1, max_depth=80.0, 
         rmse_log += torch.sqrt(torch.mean((torch.log(gt_i) -
                                            torch.log(pred_i)) ** 2))
     # Return average values for each metric
-    avg_metrics = [metric / batch_size for metric in [abs_rel, sq_rel, rmse, rmse_log, a1, a2, a3]]
+    avg_metrics = [metric / batch_size for metric in [abs_rel, sq_rel, rmse, rmse_log, abs_diff, a1, a2, a3]]
 
-    metrics_names = ['abs_rel', 'sqr_rel', 'rmse', 'rmse_log', 'a1', 'a2', 'a3']
+    metrics_names = ['abs_rel', 'sqr_rel', 'rmse', 'rmse_log', 'abs_diff', 'a1', 'a2', 'a3']
     assert len(metrics_names) == len(avg_metrics)
     results = {prefix+metrics_names[i]: avg_metric for (i, avg_metric) in enumerate(avg_metrics)}
 
