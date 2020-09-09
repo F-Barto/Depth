@@ -18,7 +18,7 @@ datasets:
     val:
       source_views_indexes: [] # val don't need the PoseNet
       kitti_root_dir: ${kitti_root_dir}
-      split_file_path: ${data_split_dir}/eigen_val_files.txt
+      split_file_path: ${data_split_dir}/filtered_eigen_test_files.txt
       sparse_depth_root_dir: ${sparse_depth_root_dir}
       gt_depth_root_dir: ${gt_depth_root_dir}
       data_transform_options: # augmentation options
