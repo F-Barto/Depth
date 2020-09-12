@@ -2,13 +2,13 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from utils.camera import Camera
 from utils.multiview_warping_and_projection import view_synthesis
 from utils.image import match_scales
 from utils.depth import calc_smoothness, inv2depth
 from losses.loss_base import LossBase, ProgressiveScaling
-
 
 
 ########################################################################################################################
@@ -56,6 +56,45 @@ def SSIM(x, y, C1=1e-4, C2=9e-4, kernel_size=3, stride=1):
 
 ########################################################################################################################
 
+def compute_color_gradients(input_img, kernelx, kernely):
+
+    input_img = (input_img* 255).floor()
+
+    sobelx_r = F.conv2d(input_img[:, 0, ...].unsqueeze(1), kernelx, padding=1)
+    sobelx_g = F.conv2d(input_img[:, 1, ...].unsqueeze(1), kernelx, padding=1)
+    sobelx_b = F.conv2d(input_img[:, 2, ...].unsqueeze(1), kernelx, padding=1)
+
+    sobely_r = F.conv2d(input_img[:, 0, ...].unsqueeze(1), kernely, padding=1)
+    sobely_g = F.conv2d(input_img[:, 1, ...].unsqueeze(1), kernely, padding=1)
+    sobely_b = F.conv2d(input_img[:, 2, ...].unsqueeze(1), kernely, padding=1)
+
+
+    sobelx = torch.cat([sobelx_r, sobelx_g, sobelx_b], 1)
+    sobely = torch.cat([sobely_r, sobely_g, sobely_b], 1)
+
+    #grad_magnitude = torch.sqrt(sobelx.pow(2) + sobely.pow(2))
+
+    # convert to uint8 [0,255]
+    #grad_magnitude = grad_magnitude.byte()
+
+    # convert to uint8 [0,255]
+    #sobelx = sobelx.byte()
+    #sobely = sobely.byte()
+
+    return sobelx, sobely
+
+
+def get_sobel_kernels():
+    sobel_kernelx = [[1, 2, 1], [0, 0, 0], [-1, -2, -1]]
+    sobel_kernelx = torch.Tensor(sobel_kernelx).expand(1, 1, 3, 3)
+
+    sobel_kernely = [[1, 0, -1], [2, 0, -2], [1, 0, -1]]
+    sobel_kernely = torch.Tensor(sobel_kernely).expand(1, 1, 3, 3)
+
+    return sobel_kernelx, sobel_kernely
+
+########################################################################################################################
+
 class MultiViewPhotometricLoss(LossBase):
     """
     Self-Supervised multiview photometric loss.
@@ -92,7 +131,8 @@ class MultiViewPhotometricLoss(LossBase):
 
     def __init__(self, num_scales=4, ssim_loss_weight=0.85, occ_reg_weight=0.1, smooth_loss_weight=0.1,
                  uniformity_threshold=0.05, uniformity_weight=0.1, C1=1e-4, C2=9e-4, photometric_reduce_op='mean',
-                 disp_norm=True, clip_loss=0.5, progressive_scaling=0.0, padding_mode='zeros', automask_loss=False):
+                 disp_norm=True, clip_loss=0.5, progressive_scaling=0.0, padding_mode='zeros', automask_loss=False,
+                 laplace_loss=False):
         super().__init__()
         self.n = num_scales
         self.ssim_loss_weight = ssim_loss_weight
@@ -107,7 +147,11 @@ class MultiViewPhotometricLoss(LossBase):
         self.clip_loss = clip_loss
         self.padding_mode = padding_mode
         self.automask_loss = automask_loss
+        self.laplace_loss = laplace_loss
         self.progressive_scaling = ProgressiveScaling(progressive_scaling, self.n)
+
+        if self.laplace_loss:
+            self.sobel_kernelx, self.sobel_kernely = get_sobel_kernels()
 
         # Asserts
         if self.automask_loss:
@@ -270,6 +314,35 @@ class MultiViewPhotometricLoss(LossBase):
 
     ########################################################################################################################
 
+    def calc_laplacian_loss(self, t_est, images):
+        """
+        Calculates the photometric loss (L1 + SSIM)
+        Parameters
+        ----------
+        t_est : list of torch.Tensor [B,3,H,W]
+            List of warped reference images in multiple scales
+        images : list of torch.Tensor [B,3,H,W]
+            List of original images in multiple scales
+        Returns
+        -------
+        photometric_loss : torch.Tensor [1]
+            Photometric loss
+        """
+
+        laplacian_losses = []
+
+        for i in range(self.n):
+            target_sobelx, target_sobely = compute_color_gradients(images[i], self.sobel_kernelx, self.sobel_kernely)
+            warped_sobelx, warped_sobely = compute_color_gradients(t_est[i], self.sobel_kernelx, self.sobel_kernely)
+
+            sqrd_err = (target_sobelx - warped_sobelx).pow(2) + (target_sobely - warped_sobely).pow(2)
+            laplacian_losses.append(sqrd_err.sum(1, True))
+
+        # Return total photometric loss
+        return laplacian_losses
+
+    ########################################################################################################################
+
     def calc_smoothness_loss(self, inv_depths, images):
         """
         Calculates the smoothness loss for inverse depth maps.
@@ -358,6 +431,11 @@ class MultiViewPhotometricLoss(LossBase):
 
         photometric_losses = [[] for _ in range(self.n)]
 
+        if self.laplace_loss:
+            laplacian_losses = [[] for _ in range(self.n)]
+            self.sobel_kernelx  = self.sobel_kernelx.type_as(target_view)
+            self.sobel_kernely = self.sobel_kernely.type_as(target_view)
+
         target_images = match_scales(target_view, inv_depths, self.n)
         depths = [inv2depth(inv_depths[i]) for i in range(self.n)]
 
@@ -365,10 +443,16 @@ class MultiViewPhotometricLoss(LossBase):
         for (source_view, pose) in zip(source_views, poses):
             # Calculate warped images
             ref_warped = self.warp_ref_images(depths, source_view, K, K, pose)
+
             # Calculate and store image loss
             photometric_loss = self.calc_photometric_loss(ref_warped, target_images)
             for i in range(self.n):
                 photometric_losses[i].append(photometric_loss[i])
+
+            if self.laplace_loss:
+                laplacian_loss = self.calc_laplacian_loss(ref_warped, target_images)
+                for i in range(self.n):
+                    laplacian_losses[i].append(laplacian_loss[i])
 
             # If using automask
             if self.automask_loss:
@@ -378,10 +462,19 @@ class MultiViewPhotometricLoss(LossBase):
                 for i in range(self.n):
                     photometric_losses[i].append(unwarped_image_loss[i])
 
+                if self.laplace_loss:
+                    unwarped_laplacian_loss = self.calc_laplacian_loss(ref_images, target_images)
+                    for i in range(self.n):
+                        laplacian_losses[i].append(unwarped_laplacian_loss[i])
+
         # Calculate reduced photometric loss
         total_photo_loss = self.reduce_photometric_loss(photometric_losses)
 
         losses = [total_photo_loss]
+
+        if self.laplace_loss:
+            total_laplacian_loss = self.reduce_photometric_loss(laplacian_losses)
+            losses.append(total_laplacian_loss)
 
         # Include smoothness loss if requested
         if self.smooth_loss_weight > 0.0:
