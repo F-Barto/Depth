@@ -282,12 +282,12 @@ class MultiViewPhotometricLoss(LossBase):
         # Return total photometric loss
         return photometric_loss
 
-    def reduce_photometric_loss(self, photometric_losses):
+    def reduce_loss(self, losses, name='photometric_loss'):
         """
         Combine the photometric loss from all context images
         Parameters
         ----------
-        photometric_losses : list of torch.Tensor [B,3,H,W]
+        losses : list of torch.Tensor [B,3,H,W]
             Pixel-wise photometric losses from the entire context
         Returns
         -------
@@ -306,11 +306,10 @@ class MultiViewPhotometricLoss(LossBase):
                     'Unknown photometric_reduce_op: {}'.format(self.photometric_reduce_op))
 
         # Reduce photometric loss
-        photometric_loss = sum([reduce_function(photometric_losses[i])
-                                for i in range(self.n)]) / self.n
+        reduced_loss = sum([reduce_function(losses[i]) for i in range(self.n)]) / self.n
         # Store and return reduced photometric loss
-        self.add_metric('photometric_loss', photometric_loss)
-        return photometric_loss
+        self.add_metric(name, reduced_loss)
+        return reduced_loss
 
     ########################################################################################################################
 
@@ -468,12 +467,12 @@ class MultiViewPhotometricLoss(LossBase):
                         laplacian_losses[i].append(unwarped_laplacian_loss[i])
 
         # Calculate reduced photometric loss
-        total_photo_loss = self.reduce_photometric_loss(photometric_losses)
+        total_photo_loss = self.reduce_loss(photometric_losses)
 
         losses = [total_photo_loss]
 
         if self.laplace_loss:
-            total_laplacian_loss = self.reduce_photometric_loss(laplacian_losses)
+            total_laplacian_loss = self.reduce_loss(laplacian_losses, name='laplacian_loss')
             losses.append(total_laplacian_loss)
 
         # Include smoothness loss if requested

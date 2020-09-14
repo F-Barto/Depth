@@ -104,6 +104,11 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         depths = [inv2depth(inv_depths[i]) for i in range(self.n)]
         gt_depths = match_scales(gt_depth, depths, self.n)
 
+        if self.laplace_loss:
+            laplacian_losses = [[] for _ in range(self.n)]
+            self.sobel_kernelx  = self.sobel_kernelx.type_as(target_view)
+            self.sobel_kernely = self.sobel_kernely.type_as(target_view)
+
         for (source_view, pose) in zip(source_views, poses):
 
             # Calculate warped images
@@ -113,6 +118,11 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
             for i in range(self.n):
                 photometric_losses[i].append(photometric_loss[i])
 
+            if self.laplace_loss:
+                laplacian_loss = self.calc_laplacian_loss(ref_warped, target_images)
+                for i in range(self.n):
+                    laplacian_losses[i].append(laplacian_loss[i])
+
             # If using automask
             if self.automask_loss:
                 # Calculate and store unwarped image loss
@@ -121,7 +131,12 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
                 for i in range(self.n):
                     photometric_losses[i].append(unwarped_image_loss[i])
 
-            # Calculate warped images
+                if self.laplace_loss:
+                    unwarped_laplacian_loss = self.calc_laplacian_loss(ref_images, target_images)
+                    for i in range(self.n):
+                        laplacian_losses[i].append(unwarped_laplacian_loss[i])
+
+            # Calculate warped images from get_depth
             ref_gt_warped = self.warp_ref_images(gt_depths, source_view, K, K, pose)
             # Calculate and store image loss
             gt_photometric_loss = self.calc_photometric_loss(ref_gt_warped, target_images)
@@ -133,7 +148,7 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
 
 
         # Calculate reduced loss
-        loss = self.reduce_photometric_loss(photometric_losses)
+        loss = self.reduce_loss(photometric_losses)
 
         depth_hints_mask = self.calc_depth_hints_mask(photometric_losses, gt_photometric_losses)
 
@@ -144,6 +159,10 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
 
         # make a list as in-pace sum is not auto-grad friendly
         losses = [loss, depth_hints_loss]
+
+        if self.laplace_loss:
+            total_laplacian_loss = self.reduce_loss(laplacian_losses, name='laplacian_loss')
+            losses.append(total_laplacian_loss)
 
         # Include smoothness loss if requested
         if self.smooth_loss_weight > 0.0:
