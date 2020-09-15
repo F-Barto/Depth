@@ -5,6 +5,6 @@
 optimizer:
     name: Adam
     depth_net_options: # optimizer's options for the depth network
-      lr: 0.0002
+      lr: 0.0001
     pose_net_options: # optimizer's options for the pose network
-      lr: 0.0002
+      lr: 0.0001
