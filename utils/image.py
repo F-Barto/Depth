@@ -1,6 +1,44 @@
 import torch.nn.functional as F
+import torch
 from utils.misc import same_shape
 from numpy import unravel_index
+
+
+def flip_lr(image):
+    """
+    Flip image horizontally
+    Parameters
+    ----------
+    image : torch.Tensor [B,3,H,W]
+        Image to be flipped
+    Returns
+    -------
+    image_flipped : torch.Tensor [B,3,H,W]
+        Flipped image
+    """
+    assert image.dim() == 4, 'You need to provide a [B,C,H,W] image to flip'
+    return torch.flip(image, [3])
+
+def flip_model(model, image, flip):
+    """
+    Flip input image and flip output inverse depth map
+    Parameters
+    ----------
+    model : nn.Module
+        Module to be used
+    image : torch.Tensor [B,3,H,W]
+        Input image
+    flip : bool
+        True if the flip is happening
+    Returns
+    -------
+    inv_depths : list of torch.Tensor [B,1,H,W]
+        List of predicted inverse depth maps
+    """
+    if flip:
+        return [flip_lr(inv_depth) for inv_depth in model(flip_lr(image))]
+    else:
+        return model(image)
 
 def gradient_x(image):
     """

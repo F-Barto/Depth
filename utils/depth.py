@@ -156,7 +156,7 @@ def fuse_inv_depth(inv_depth, inv_depth_hat, method='mean'):
         raise ValueError('Unknown post-process method {}'.format(method))
 
 
-def compute_depth_metrics(gt, pred, crop='garg', min_depth=0.1, max_depth=80.0, use_gt_scale=True, prefix=''):
+def compute_depth_metrics(gt, pred, crop='garg', min_depth=1e-3, max_depth=80.0, use_gt_scale=True, prefix=''):
     """
     Compute depth metrics from predicted and ground-truth depth maps
     Parameters
