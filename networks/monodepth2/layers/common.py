@@ -77,10 +77,10 @@ class Conv3x3(nn.Module):
         return out
 
 
-def nearest_upsample(x):
+def nearest_upsample(x, scale_factor=2):
     """Upsample input tensor by a factor of 2
     """
-    return F.interpolate(x, scale_factor=2, mode="nearest")
+    return F.interpolate(x, scale_factor=scale_factor, mode="nearest")
 
 def icnr(x, scale=2, init=nn.init.kaiming_normal_):
     """

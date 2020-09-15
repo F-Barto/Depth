@@ -1,9 +1,11 @@
 import torch.nn as nn
+import torch
 
 from functools import partial
 
 from networks.monodepth2.layers.resnet_encoder import ResnetEncoder
 from networks.monodepth2.layers.depth_decoder import DepthDecoder
+from networks.monodepth2.layers.skip_decoder import SkipDecoder
 from networks.monodepth2.layers.common import disp_to_depth, get_activation
 from networks.attention_guidance import AttentionGuidance
 from networks.continuous_convolution import ContinuousFusion
@@ -13,7 +15,46 @@ from utils.depth import depth2inv
 ########################################################################################################################
 
 
-class GuidedDepthResNet(nn.Module):
+class AdaptiveMultiModalWeighting(nn.Module):
+
+    def __init__(self, in_channels, n_modalities, activation):
+        super().__init__()
+
+        self.branchs = nn.ModuleDict()
+        for i in range(n_modalities):
+
+            branch = nn.Sequential(
+                    nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1, bias=False),
+                    nn.BatchNorm2d(in_channels),
+                    activation(inplace=True),
+                    nn.AdaptiveAvgPool2d(1), #Global Average Pooling
+                    nn.Conv2d(in_channels, 1, kernel_size=1, padding=0, bias=True),
+                    activation(inplace=True)
+                )
+
+            self.branchs.updates({f'branch_{i}': branch})
+
+        self.last_conv = nn.Conv2d(in_channels, in_channels, kernel_size=1, padding=0, bias=True)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, modalities_features):
+
+        branch_outs = []
+        for i,x in enumerate(modalities_features):
+            branch_outs.append(self.branchs[f'branch_{i}'](x))
+
+        x = torch.cat(branch_outs, 1)
+        x = self.relu(self.last_conv(x))
+
+        weights = self.softmax(x)
+
+        return  weights
+
+
+
+class TeacherGuidedDepthResNet(nn.Module):
     """
     Inverse depth network based on the ResNet architecture.
     Parameters
@@ -27,23 +68,25 @@ class GuidedDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, num_layers=18, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
-                 inverse_lidar_input=True, preact=False, invertible=False, n_power_iterations=5, no_maxpool=False,
-                 **kwargs):
+                 inverse_lidar_input=True, n_power_iterations=5, no_maxpool=False, upsample_path='direct',
+                 self_teaching=False, **kwargs):
+
         super().__init__()
 
         assert num_layers in [18, 34, 50], 'ResNet version {} not available'.format(num_layers)
 
         assert guidance in ['attention', 'continuous']
 
+        self.self_teaching = self_teaching
         self.inverse_lidar_input = inverse_lidar_input
 
         activation_cls = get_activation(activation)
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
         self.encoder = ResnetEncoder(num_layers=num_layers, input_channels=input_channels, activation=activation_cls,
-                                     preact=preact, invertible=invertible, n_power_iterations=n_power_iterations)
+                                     n_power_iterations=n_power_iterations)
         self.lidar_encoder = ResnetEncoder(num_layers=num_layers, input_channels=1, activation=activation_cls,
-                                           no_first_norm=True, no_maxpool=no_maxpool, preact=preact, invertible=invertible,
+                                           no_first_norm=True, no_maxpool=no_maxpool,
                                            n_power_iterations=n_power_iterations)
 
         self.num_ch_enc = self.encoder.num_ch_enc
@@ -63,7 +106,18 @@ class GuidedDepthResNet(nn.Module):
             else:
                 print(f"guidance {guidance} not implemented")
 
-        self.decoder = DepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        if self.self_teaching:
+            self.adaptive_weighting = AdaptiveMultiModalWeighting(in_channels=self.num_ch_enc[-1] * 2,
+                                                                  n_modalities=2,
+                                                                  activation=activation_cls)
+
+
+        self.decoder = DepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls,
+                                    uncertainty=self.self_teaching, **kwargs)
+        self.cam_decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls,
+                                         upsample_path=upsample_path, **kwargs)
+        self.lidar_decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls,
+                                         upsample_path=upsample_path, **kwargs)
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=120.0)
 
@@ -94,7 +148,35 @@ class GuidedDepthResNet(nn.Module):
 
         disps = [x[('disp', i)] for i in range(4)]
 
+        if self.self_teaching:
+            uncertainties = [x[('uncertainty', i)] for i in range(4)]
+
         if self.training:
-            return [self.scale_inv_depth(d)[0] for d in disps]
+
+            cam_disp = self.cam_decoder(cam_features)
+            cam_disp = self.scale_inv_depth(cam_disp)[0]
+            lidar_disp = self.lidar_decoder(lidar_features)
+            lidar_disp = self.scale_inv_depth(lidar_disp)[0]
+
+            weights = self.adaptive_weighting([cam_features[-1], lidar_features[-1]])
+
+            outputs = {
+                'inv_depths': [self.scale_inv_depth(d)[0] for d in disps],
+                'cam_disp': cam_disp,
+                'lidar_disp': lidar_disp,
+                'adaptive_weights': weights,
+            }
+
+            if self.self_teaching:
+                outputs['uncertainties'] = uncertainties
+
+            return outputs
+
         else:
-            return self.scale_inv_depth(disps[0])[0]
+
+            outputs = {'inv_depths': self.scale_inv_depth(disps[0])[0]}
+
+            if self.self_teaching:
+                outputs['uncertainties'] = uncertainties
+
+            return outputs

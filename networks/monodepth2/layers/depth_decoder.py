@@ -15,13 +15,14 @@ from .common import ConvBlock, Conv3x3, nearest_upsample, SubPixelUpsamplingBloc
 
 class DepthDecoder(nn.Module):
     def __init__(self, num_ch_enc, activation, scales=range(4), num_output_channels=1, use_skips=True,
-                 concat_skips=True, upsample_mode='nearest', blur=True, blur_at_end=True):
+                 concat_skips=True, upsample_mode='nearest', blur=True, blur_at_end=True, uncertainty=False):
         super(DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels
         self.use_skips = use_skips
         self.concat_skips = concat_skips
         self.scales = scales
+        self.uncertainty = uncertainty
 
         available_upmodes = ['nearest', 'pixelshuffle', 'res-pixelshuffle']
         if upsample_mode not in available_upmodes:
@@ -56,6 +57,9 @@ class DepthDecoder(nn.Module):
         for s in self.scales:
             self.convs[("dispconv", s)] = Conv3x3(self.num_ch_dec[s], self.num_output_channels)
 
+            if self.uncertainty:
+                self.convs[("uncertaintyconv", s)] = Conv3x3(self.num_ch_dec[s], self.num_output_channels)
+
         self.decoder = nn.ModuleList(list(self.convs.values()))
         self.sigmoid = nn.Sigmoid()
 
@@ -86,5 +90,9 @@ class DepthDecoder(nn.Module):
 
             if i in self.scales:
                 self.outputs[("disp", i)] = self.sigmoid(self.convs[("dispconv", i)](x))
+
+                if self.uncertainty:
+                    # predicting log(var(disp)) (unbounded) instead of standard deviation for stability
+                    self.outputs[("uncertainty", i)] = self.convs[("uncertaintyconv", i)](x)
 
         return self.outputs

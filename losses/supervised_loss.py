@@ -362,3 +362,88 @@ class ReprojectedLoss(LossBase):
             'loss': reprojected_loss.unsqueeze(0),
             'metrics': self.metrics,
         }
+
+
+
+
+#########################################################################################
+
+class MultimodalSelfTeachingLoss(LossBase):
+    """
+    Supervised loss for inverse depth maps.
+
+    Parameters
+    ----------
+
+    """
+    def __init__(self, supervised_num_scales=4):
+        super().__init__()
+
+        self.n = supervised_num_scales
+
+    def calculate_losses(self, teacher_preds, student_preds, student_logvars):
+        """
+        Calculate the supervised loss.
+
+        Returns
+        -------
+        loss : torch.Tensor [1]
+            Average supervised loss for all scales
+        """
+
+        losses = []
+
+        for i in range(self.n):
+
+            # "From What Uncertainties Do We Need in Bayesian Deep Learning for Computer Vision?" NIPS 2017
+            # In practice, we train the network to predict the log variance
+            loss1 = torch.exp(-student_logvars[i]) * torch.square((teacher_preds[i] - student_preds[i]))
+            loss1 = loss1.mean((2,3), keepdim=True)
+            loss2 = student_logvars[i].mean((2,3), keepdim=True)
+
+            loss = .5 * (loss1 + loss2)
+
+            losses.append(loss)
+
+        # Return per-scale average loss
+        return losses
+
+    def forward(self, multimodal_teachers_preds, student_preds, student_logvars, weights=None):
+        """
+        Calculates training supervised loss.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        losses_and_metrics : dict
+            Output dictionary
+        """
+
+        nb_teachers = len(multimodal_teachers_preds)
+        B,_,_,_ = student_preds[0].shape
+
+        teachers_losses = [[] for _ in range(self.n)]
+        for teacher_pred in multimodal_teachers_preds:
+            teacher_preds = match_scales(teacher_pred, student_preds, self.n)
+            losses = self.calculate_losses(teacher_preds, student_preds, student_logvars)
+            for i in range(self.n):
+                teachers_losses[i].append(losses[i])
+
+        teachers_losses = [torch.cat(teachers_loss, 1) for teachers_loss in teachers_losses] # B x nb_teachers x 1 x 1
+
+        if weights is None:
+            weights = torch.ones(B,nb_teachers,1,1).as_type(student_preds[0])
+
+        teachers_losses = [(teachers_loss * weights).sum(1).mean() for teachers_loss in teachers_losses] # weigthed sum
+
+        loss = sum(teachers_losses) / self.n
+
+
+        self.add_metric('multimodal_teacher_loss', loss)
+        # Return losses and metrics
+        return {
+            'loss': loss.unsqueeze(0),
+            'metrics': self.metrics,
+        }
