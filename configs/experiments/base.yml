@@ -1,7 +1,7 @@
 seed: 42
 rotation_mode: euler
 input_channels: 3
-log_images_interval: 80 # log images every X steps (used in val and test only)
+log_images_interval: 20 # log images every X steps (used in val and test only)
 upsample_depth_maps: True
 logger: tensorboard # either wandb or tensorboard
 
