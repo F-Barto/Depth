@@ -2,9 +2,11 @@
 # The options are the ones of the torch.optim class (e.g., learning rate is `lr` not `learning_rate` or other)
 # see https://pytorch.org/docs/stable/optim.html
 
+learning_rate: 1e-4
+
 optimizer:
     name: Adam
     depth_net_options: # optimizer's options for the depth network
-      lr: 0.0001
+      lr: ${learning_rate}
     pose_net_options: # optimizer's options for the pose network
-      lr: 0.0001
+      lr: ${learning_rate}
