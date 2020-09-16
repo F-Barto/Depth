@@ -20,7 +20,7 @@ class DepthResNet(nn.Module):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, version=None, **kwargs):
+    def __init__(self, version='18', **kwargs):
         super().__init__()
         assert version is not None, "DispResNet needs a version"
 
