@@ -179,7 +179,7 @@ def compute_depth_metrics(gt, pred, crop='garg', min_depth=1e-3, max_depth=80.0,
     batch_size, _, gt_height, gt_width = gt.shape
     abs_diff = abs_rel = sq_rel = rmse = rmse_log = a1 = a2 = a3 = 0.0
     # Interpolate predicted depth to ground-truth resolution
-    pred = interpolate_image(pred, gt.shape, mode='nearest')
+    pred = interpolate_image(pred, gt.shape, mode='bilinear')
     # If using crop
     if crop == 'garg':
         crop_mask = torch.zeros(gt.shape[-2:]).byte().type_as(gt)
