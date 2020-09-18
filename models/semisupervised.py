@@ -27,6 +27,9 @@ from networks.monodepth2.pose_res_net import PoseResNet
 from networks.monodepth2.guided_depth_rest_net import GuidedDepthResNet
 from networks.monodepth2.teacher_guided_depth_rest_net import TeacherGuidedDepthResNet
 
+from networks.monodepth_original.depth_res_net import DepthResNet as OriginalDepthResNet
+from networks.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
+
 from losses.multiview_photometric_loss import MultiViewPhotometricLoss
 from losses.supervised_loss import ReprojectedLoss, MultimodalSelfTeachingLoss
 from losses.velocity_loss import VelocityLoss
@@ -39,6 +42,7 @@ from dataloaders.transforms import train_transforms, val_transforms, test_transf
 from utils.pose import Pose
 from utils.image import interpolate_scales, flip_lr
 from utils.depth import inv2depth, depth2inv, compute_depth_metrics
+
 from utils.common_logging import average_metrics
 from utils.wandb_logging import prepare_images_to_log as wandb_prep_images
 from utils.tensorboard_logging import prepare_images_to_log as tensorboard_prep_images
@@ -102,6 +106,8 @@ class MonocularSemiSupDepth(pl.LightningModule):
             self.depth_net = PackNet01(**hparams.model.depth_net.options, input_channels=self.input_channels)
         elif self.hparams.model.depth_net.name == 'monodepth':
             self.depth_net = DepthResNet(**hparams.model.depth_net.options, input_channels=self.input_channels)
+        elif self.hparams.model.depth_net.name == 'monodepth_original':
+            self.depth_net = OriginalDepthResNet(**hparams.model.depth_net.options)
         elif self.hparams.model.depth_net.name == 'guiding':
             assert train_dataset.load_sparse_depth, "Sparse depth signal is necessary for feature guidance."
             self.depth_net = GuidedDepthResNet(**hparams.model.depth_net.options, input_channels=self.input_channels)
@@ -117,6 +123,8 @@ class MonocularSemiSupDepth(pl.LightningModule):
             self.pose_net = PoseNet(**hparams.model.pose_net.options, input_channels=self.input_channels)
         elif self.hparams.model.pose_net.name == 'monodepth':
             self.pose_net = PoseResNet(**hparams.model.pose_net.options, input_channels=self.input_channels)
+        elif self.hparams.model.pose_net.name == 'monodepth_original':
+            self.pose_net = OriginalPoseResNet(**hparams.model.pose_net.options)
         else:
             terminal_logger.error(f"Pose net {self.hparams.model.pose_net.name} not implemented")
 
@@ -234,7 +242,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 output['lidar_disp'] = [flip_lr(lidar_disp) for lidar_disp in make_list(output['lidar_disp'])]
             else:
                 output['inv_depths'] = make_list(output['inv_depths'])
-                output['cam_disp'] = make_list(output['cam_disp']) 
+                output['cam_disp'] = make_list(output['cam_disp'])
                 output['lidar_disp'] = make_list(output['lidar_disp'])
 
             return output

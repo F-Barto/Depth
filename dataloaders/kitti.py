@@ -53,7 +53,7 @@ class SequentialKittiLoader(Dataset):
 
     def __init__(self, kitti_root_dir, split_file_path, gt_depth_root_dir=None, sparse_depth_root_dir=None,
                  data_transform=None, data_transform_options=None, source_views_indexes=[-1, 1], load_pose=False,
-                 input_channels=3):
+                 eval_on_sparse=True, input_channels=3):
 
         """
         Parameters
@@ -92,6 +92,8 @@ class SequentialKittiLoader(Dataset):
         self.data_transform = data_transform
         self.data_transform_options = data_transform_options
 
+        self.eval_on_sparse = eval_on_sparse
+
         if data_transform is not None:
             assert data_transform_options is not None
 
@@ -110,6 +112,10 @@ class SequentialKittiLoader(Dataset):
             self.load_sparse_depth = True
             terminal_logger.info(
                 f"The sparse depth from LiDAR data of each frame will be loaded from {str(sparse_depth_root_dir)}.")
+
+        if self.eval_on_sparse:
+            self.load_sparse_depth = True
+            assert sparse_depth_root_dir is not None and sparse_depth_root_dir.exists(), sparse_depth_root_dir
 
         src_indexes_err_msg = "It is expected the source index list is in ascending order and does not contains 0 " \
                               "(corresponding to the target)\n " \
@@ -448,19 +454,8 @@ class SequentialKittiLoader(Dataset):
         sequence_idx = Path(img_path).parents[2].name[17:21]  # 0048
         frame_idx = Path(img_path).stem
         sample['filename'] = f"{capture_date}_{sequence_idx}_{frame_idx}"
-
-        if 'val' in self.split_name or 'test' in self.split_name:
-
-            path_suffix = f"{capture_date}_drive_{sequence_idx}_sync/{PROJECTED_GROUNDTRUTH_DIR}/{frame_idx}.png"
-
-            projected_lidar_path = Path(self.gt_depth_root_dir) / 'val' / path_suffix
-
-            if not projected_lidar_path.exists():
-                projected_lidar_path = Path(self.gt_depth_root_dir) / 'train' / path_suffix
-
-            projected_lidar = self.read_png_depth(projected_lidar_path)
-            sample['projected_lidar'] = projected_lidar
-
+        
+        
         if self.load_sparse_depth:
             # assumes the depth files are stored in the same format as KITTI_raw:
             # depth_root_dir/2011_09_26/2011_09_26_drive_0048_sync/proj_depth/velodyne/image_02/0000000085.npz
@@ -470,6 +465,23 @@ class SequentialKittiLoader(Dataset):
             depth = self.read_npz_depth(str(depth_path))
             sample['sparse_projected_lidar'] =  depth
 
+
+        if 'val' in self.split_name or 'test' in self.split_name:
+            
+            if not self.eval_on_sparse:
+
+                path_suffix = f"{capture_date}_drive_{sequence_idx}_sync/{PROJECTED_GROUNDTRUTH_DIR}/{frame_idx}.png"
+    
+                projected_lidar_path = Path(self.gt_depth_root_dir) / 'val' / path_suffix
+    
+                if not projected_lidar_path.exists():
+                    projected_lidar_path = Path(self.gt_depth_root_dir) / 'train' / path_suffix
+    
+                projected_lidar = self.read_png_depth(projected_lidar_path)
+                sample['projected_lidar'] = projected_lidar
+            
+            else:
+                sample['projected_lidar'] = sample['sparse_projected_lidar']
 
         if self.data_transform is not None:
             sample = self.data_transform(sample, **self.data_transform_options)

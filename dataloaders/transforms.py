@@ -574,10 +574,11 @@ def val_transforms(sample, image_shape):
 
     sample[TARGET_VIEW] = resize_image(sample[TARGET_VIEW], image_shape)
 
-    # Resize depth maps
-    for key in DEPTH_KEYS:
-        if sample.get(key) is not None:
-            sample[key] = resize_depth(sample[key], image_shape)
+    # Resize sparse depth maps
+    if sample.get(SPARSE_DEPTH) is not None:
+        sample[SPARSE_DEPTH] = resize_depth(sample[SPARSE_DEPTH], image_shape)
+
+    # GT depth is not resized
 
     sample = to_tensor_sample(sample)
     return sample
@@ -600,10 +601,11 @@ def test_transforms(sample, image_shape):
 
     sample[TARGET_VIEW] = resize_image(sample[TARGET_VIEW], image_shape)
 
-    # Resize depth maps
-    for key in DEPTH_KEYS:
-        if sample.get(key) is not None:
-            sample[key] = resize_depth(sample[key], image_shape)
+    # Resize sparse depth maps
+    if sample.get(SPARSE_DEPTH) is not None:
+        sample[SPARSE_DEPTH] = resize_depth(sample[SPARSE_DEPTH], image_shape)
+
+    # GT depth is not resized
 
     sample = to_tensor_sample(sample)
     return sample
