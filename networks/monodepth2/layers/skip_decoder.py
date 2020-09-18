@@ -56,7 +56,7 @@ class SkipDecoder(nn.Module):
 
         # decoder
         self.convs = OrderedDict()
-        for i in range(4, 0, -1):
+        for i in range(4, 0, -1): # [4, 3, 2, 1]
             # upconv_0, pre upsampling
             num_ch_in = self.num_ch_enc[i]
 
@@ -64,7 +64,7 @@ class SkipDecoder(nn.Module):
                 self.convs[("skipconv", i)] = Conv1x1Block(num_ch_in, num_ch_in, activation)
 
             if 'pixelshuffle' in self.upsample_mode and self.upsample_path != 'direct':
-                do_blur = blur and (i != 4 or blur_at_end)
+                do_blur = blur and (i != 0 or blur_at_end)
                 self.convs[("pixelshuffle", i)] = SubPixelUpsamplingBlock(num_ch_in, blur=do_blur,
                                                                           upscale_factor=self.upscale_factors[i])
 
@@ -83,21 +83,23 @@ class SkipDecoder(nn.Module):
 
     def upsample(self, x, i):
 
-        if self.upsample_mode == 'pixelshuffle':
-            x = self.convs[("pixelshuffle", i)](x)
-        if self.upsample_mode == 'res-pixelshuffle':
-            x = self.convs[("pixelshuffle", i)](x) + nearest_upsample(x, scale_factor=self.upscale_factors[i])
-        if self.upsample_mode == 'nearest':
+        if self.upsample_mode == 'nearest' or self.upsample_path == 'direct':
             x = nearest_upsample(x, scale_factor=self.upscale_factors[i])
+        elif self.upsample_mode == 'pixelshuffle':
+            x = self.convs[("pixelshuffle", i)](x)
+        elif self.upsample_mode == 'res-pixelshuffle':
+            x = self.convs[("pixelshuffle", i)](x) + nearest_upsample(x, scale_factor=self.upscale_factors[i])
+        else:
+            pass
 
         return x
 
 
     def forward(self, input_features):
 
-        concat = self.upsample(input_features[-1], -1)
+        concat = self.upsample(input_features[-1], 4)
 
-        for i in range(3, 0, -1):
+        for i in range(3, 1, -1):
 
             if self.upsample_path == 'conv1cascaded':
                 skip = self.convs[("skipconv", i)](input_features[i])
