@@ -394,14 +394,6 @@ class MultimodalSelfTeachingLoss(LossBase):
         losses = []
 
         for i in range(self.n):
-
-            print('*'*60)
-            print()
-            print("teacher_preds[i].shape: ", teacher_preds[i].shape)
-            print("student_preds[i].shape: ", student_preds[i].shape)
-            print("student_logvars[i].shape: ", student_logvars[i].shape)
-
-
             # "From What Uncertainties Do We Need in Bayesian Deep Learning for Computer Vision?" NIPS 2017
             # In practice, we train the network to predict the log variance
             loss1 = torch.exp(-student_logvars[i]) * torch.square((teacher_preds[i] - student_preds[i]))

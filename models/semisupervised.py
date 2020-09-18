@@ -244,6 +244,10 @@ class MonocularSemiSupDepth(pl.LightningModule):
         else:
 
             keys = ['inv_depths']
+
+            if output.get('uncertainties', None) is not None:
+                keys.append('uncertainties')
+
             if self.training:
                 keys += ['cam_disp', 'lidar_disp'] # even if these are one scales predictions
 
@@ -253,7 +257,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 else:
                     output[key] = make_list(output[key])
 
-                if key == 'inv_depths' and  self.hparams.upsample_depth_maps:
+                if key in ['inv_depths', 'uncertainties'] and  self.hparams.upsample_depth_maps:
                     output[key] = interpolate_scales(output[key], mode='nearest')
 
             return output
