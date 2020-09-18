@@ -56,17 +56,16 @@ class SkipDecoder(nn.Module):
 
         # decoder
         self.convs = OrderedDict()
-        for i in range(4, 0, -1): # [4, 3, 2, 1]
+        for i in range(4, 1, -1): # [4, 3, 2]
             # upconv_0, pre upsampling
             num_ch_in = self.num_ch_enc[i]
-
-            if self.upsample_path == 'conv1cascaded':
-                self.convs[("skipconv", i)] = Conv1x1Block(num_ch_in, num_ch_in, activation)
-
             if 'pixelshuffle' in self.upsample_mode and self.upsample_path != 'direct':
                 do_blur = blur and (i != 0 or blur_at_end)
                 self.convs[("pixelshuffle", i)] = SubPixelUpsamplingBlock(num_ch_in, blur=do_blur,
                                                                           upscale_factor=self.upscale_factors[i])
+            num_ch_in = self.num_ch_enc[i-1]
+            if self.upsample_path == 'conv1cascaded':
+                self.convs[("skipconv", i-1)] = Conv1x1Block(num_ch_in, num_ch_in, activation)
 
         # reduce to 128 for pixelshffle -> 128 * 4^2 = 2048 or else 256 * 4^2 = 4096 too big
         concat_chans_out = 128 if 'pixelshuffle' in self.upsample_mode else 256
@@ -99,7 +98,7 @@ class SkipDecoder(nn.Module):
 
         concat = self.upsample(input_features[-1], 4)
 
-        for i in range(3, 1, -1):
+        for i in range(3, 0, -1): # [3, 2, 1]
 
             if self.upsample_path == 'conv1cascaded':
                 skip = self.convs[("skipconv", i)](input_features[i])
