@@ -63,17 +63,20 @@ class SkipDecoder(nn.Module):
             if self.upsample_path == 'conv1cascaded':
                 self.convs[("skipconv", i)] = Conv1x1Block(num_ch_in, num_ch_in, activation)
 
-            if 'pixelshuffle' in self.upsample_mode:
+            if 'pixelshuffle' in self.upsample_mode and self.upsample_path != 'direct':
                 do_blur = blur and (i != 4 or blur_at_end)
                 self.convs[("pixelshuffle", i)] = SubPixelUpsamplingBlock(num_ch_in, blur=do_blur,
                                                                           upscale_factor=self.upscale_factors[i])
 
-        self.concatconv = ConvBlock(self.num_ch_concat, 256, activation)
+        # reduce to 128 for pixelshffle -> 128 * 4^2 = 2048 or else 256 * 4^2 = 4096 too big
+        concat_chans_out = 128 if 'pixelshuffle' in self.upsample_mode else 256
+        self.concatconv = ConvBlock(self.num_ch_concat, concat_chans_out, activation)
 
-        self.dispconv = Conv3x3(256, self.num_output_channels)
+        self.dispconv = Conv3x3(concat_chans_out, self.num_output_channels)
 
         if 'pixelshuffle' in self.upsample_mode:
-            self.last_pixelshuffle = SubPixelUpsamplingBlock(self.num_output_channels, blur=do_blur, upscale_factor=4)
+            self.last_pixelshuffle = SubPixelUpsamplingBlock(concat_chans_out, out_channels=self.num_output_channels,
+                                                             blur=blur_at_end, upscale_factor=4)
 
         self.decoder = nn.ModuleList(list(self.convs.values()))
         self.sigmoid = nn.Sigmoid()
@@ -114,15 +117,11 @@ class SkipDecoder(nn.Module):
 
         x = self.concatconv(concat)
 
-        if self.upsample_mode == 'pixelshuffle':
+        if 'pixelshuffle' in self.upsample_mode:
             up_x = self.last_pixelshuffle(x)
         else:
             out_dispconv = self.dispconv(x)
-
-        if self.upsample_mode == 'res-pixelshuffle':
-            up_x = self.last_pixelshuffle(x) + nearest_upsample(out_dispconv, scale_factor=self.upscale_factors[i])
-        if self.upsample_mode == 'nearest':
-            up_x = nearest_upsample(out_dispconv, scale_factor=self.upscale_factors[i])
+            up_x = nearest_upsample(out_dispconv, scale_factor=4)
 
         self.disp = self.sigmoid(up_x)
 
