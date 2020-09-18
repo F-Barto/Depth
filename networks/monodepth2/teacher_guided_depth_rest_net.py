@@ -32,7 +32,7 @@ class AdaptiveMultiModalWeighting(nn.Module):
                     activation(inplace=True)
                 )
 
-            self.branchs.updates({f'branch_{i}': branch})
+            self.branchs.update({f'branch_{i}': branch})
 
         self.last_conv = nn.Conv2d(in_channels, in_channels, kernel_size=1, padding=0, bias=True)
         self.relu = nn.ReLU(inplace=True)
