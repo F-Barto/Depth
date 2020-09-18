@@ -46,7 +46,7 @@ class SkipDecoder(nn.Module):
         self.num_ch_enc = num_ch_enc
         self.num_ch_concat = sum(num_ch_enc[-4:])
 
-        self.upscale_factors = np.zeros(len(num_ch_enc))
+        self.upscale_factors = np.zeros(len(num_ch_enc)).astype(int)
         if self.upsample_path == 'direct':
             self.upscale_factors[[-1,-2,-3]] = [8,4,2]
         else:
