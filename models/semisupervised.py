@@ -221,7 +221,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         else:
             output = self.depth_net(image, sparse_depth)
 
-        if not isinstance(output, dict):
+        if not isinstance(output, dict): # not self-teaching, the output is just a list containing inv_depths
             inv_depths = output
             inv_depths = make_list(inv_depths)
 
@@ -236,14 +236,15 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         else:
 
-            if flip:
-                output['inv_depths'] = [flip_lr(inv_depth) for inv_depth in make_list(output['inv_depths'])]
-                output['cam_disp'] = [flip_lr(cam_disp) for cam_disp in make_list(output['cam_disp'])]
-                output['lidar_disp'] = [flip_lr(lidar_disp) for lidar_disp in make_list(output['lidar_disp'])]
-            else:
-                output['inv_depths'] = make_list(output['inv_depths'])
-                output['cam_disp'] = make_list(output['cam_disp'])
-                output['lidar_disp'] = make_list(output['lidar_disp'])
+            keys = ['inv_depths']
+            if self.training:
+                keys += ['cam_disp', 'lidar_disp']
+
+            for key in keys:
+                if flip:
+                    output[key] = [flip_lr(o) for o in make_list(output[key])]
+                else:
+                    output[key] = make_list(output[key])
 
             return output
 
