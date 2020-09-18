@@ -245,13 +245,16 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
             keys = ['inv_depths']
             if self.training:
-                keys += ['cam_disp', 'lidar_disp']
+                keys += ['cam_disp', 'lidar_disp'] # even if these are one scales predictions
 
             for key in keys:
                 if flip:
                     output[key] = [flip_lr(o) for o in make_list(output[key])]
                 else:
                     output[key] = make_list(output[key])
+
+                if key == 'inv_depths' and  self.hparams.upsample_depth_maps:
+                    output[key] = interpolate_scales(output[key], mode='nearest')
 
             return output
 
