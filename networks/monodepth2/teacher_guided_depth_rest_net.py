@@ -34,7 +34,7 @@ class AdaptiveMultiModalWeighting(nn.Module):
 
             self.branchs.update({f'branch_{i}': branch})
 
-        self.last_conv = nn.Conv2d(in_channels, in_channels, kernel_size=1, padding=0, bias=True)
+        self.last_conv = nn.Conv2d(n_modalities, n_modalities, kernel_size=1, padding=0, bias=True)
         self.relu = nn.ReLU(inplace=True)
 
         self.softmax = nn.Softmax(dim=1)
@@ -114,7 +114,7 @@ class TeacherGuidedDepthResNet(nn.Module):
                 print(f"guidance {guidance} not implemented")
 
         if self.self_teaching:
-            self.adaptive_weighting = AdaptiveMultiModalWeighting(in_channels=self.num_ch_enc[-1] * 2,
+            self.adaptive_weighting = AdaptiveMultiModalWeighting(in_channels=self.num_ch_enc[-1],
                                                                   n_modalities=2,
                                                                   activation=activation_cls)
 
