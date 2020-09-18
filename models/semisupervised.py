@@ -395,12 +395,11 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 if 'uncertainties' in preds:
                     weights = preds.get('adaptive_weights', None)
 
-                    selfteaching_loss, selfteaching_metrics = \
-                        self._selfteaching_loss( [preds['cam_disp'][0], preds['lidar_disp'][0]], preds['inv_depths'],
-                                                 preds['uncertainties'], weights = weights)
-
-                    losses.append(selfteaching_loss)
-                    metrics.update(selfteaching_metrics)
+                    selfteaching_output = self._selfteaching_loss( [preds['cam_disp'][0], preds['lidar_disp'][0]],
+                                                                   preds['inv_depths'], preds['uncertainties'],
+                                                                   weights = weights)
+                    losses.append(selfteaching_output['loss'])
+                    metrics.update(selfteaching_output['metrics'])
 
             return { **preds, 'loss': sum(losses), 'metrics': metrics}
 

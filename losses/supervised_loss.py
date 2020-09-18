@@ -441,7 +441,7 @@ class MultimodalSelfTeachingLoss(LossBase):
         loss = sum(teachers_losses) / self.n
 
 
-        self.add_metric('multimodal_teacher_loss', loss)
+        self.add_metric('multimodal_selfteaching_loss', loss)
         # Return losses and metrics
         return {
             'loss': loss.unsqueeze(0),
