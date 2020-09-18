@@ -233,7 +233,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
             inv_depths = make_list(inv_depths)
 
             if flip:
-                return [flip_lr(inv_depth) for inv_depth in inv_depths]
+                inv_depths = [flip_lr(inv_depth) for inv_depth in inv_depths]
 
             if self.hparams.upsample_depth_maps:
                 inv_depths = interpolate_scales(inv_depths, mode='nearest')
@@ -393,7 +393,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                     weights = preds.get('adaptive_weights', None)
 
                     selfteaching_loss, selfteaching_metrics = \
-                        self._selfteaching_loss( [preds['cam_disp'], preds['lidar_disp']], preds['inv_depths'],
+                        self._selfteaching_loss( [preds['cam_disp'][0], preds['lidar_disp'][0]], preds['inv_depths'],
                                                  preds['uncertainties'], weights = weights)
 
                     losses.append(selfteaching_loss)
