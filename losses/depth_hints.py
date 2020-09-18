@@ -18,16 +18,18 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
     kwargs : dict
         Extra parameters
     """
-    def __init__(self, supervised_method='reprojected', hinted_loss_weight=1.0, **kwargs):
+
+    def __init__(self, supervised_method='reprojected', hinted_loss_weight=1.0, supervised_num_scales=4, **kwargs):
         super().__init__(**kwargs)
 
         self.hinted_loss_weight = hinted_loss_weight
 
         if supervised_method == 'reprojected':
-            self._supervised_loss = ReprojectedLoss(**kwargs)
+            self._supervised_loss = ReprojectedLoss(supervised_num_scales=supervised_num_scales, **kwargs)
             self.supervised_loss = self._supervised_loss.calculate_reprojected_losses
         else:
-            self._supervised_loss = SupervisedLoss(supervised_method=supervised_method, **kwargs)
+            self._supervised_loss = SupervisedLoss(supervised_method=supervised_method,
+                                                   supervised_num_scales=supervised_num_scales,  **kwargs)
             self.supervised_loss = self._supervised_loss.calculate_losses
 
         self.supervised_method = supervised_method

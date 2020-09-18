@@ -11,6 +11,7 @@ What data to use (train_dataloader, val_dataloader, test_dataloader)
 '''
 
 import random
+import copy
 
 import torch
 from torch.utils.data import DataLoader
@@ -158,7 +159,13 @@ class MonocularSemiSupDepth(pl.LightningModule):
             assert hparams.datasets.train.load_pose == False, \
                 'GT translation magnitude should not be load if no velocity supervision.'
 
-        self._selfteaching_loss = MultimodalSelfTeachingLoss(4)
+        if self.hparams.model.depth_net.name == 'teacher-guiding':
+            self._selfteaching_loss = MultimodalSelfTeachingLoss(4)
+
+            monoscale_hinted_loss_params = copy.deepcopy(hparams.losses.HintedMultiViewPhotometricLoss)
+            monoscale_hinted_loss_params.supervised_num_scales = 1
+            monoscale_hinted_loss_params.num_scales = 1
+            self._monoscale_hinted_loss = HintedMultiViewPhotometricLoss(**monoscale_hinted_loss_params)
 
 
     def compute_common_losses_and_metrics(self, batch, disp_preds, poses_preds, progress, metrics_prefix=''):
@@ -353,10 +360,31 @@ class MonocularSemiSupDepth(pl.LightningModule):
             losses, metrics = self.compute_common_losses_and_metrics(batch, preds['inv_depths'], poses, progress)
 
             if 'cam_disp' in preds and 'lidar_disp' in preds:
-                cam_losses, cam_metrics = self.compute_common_losses_and_metrics(batch, preds['cam_disp'], poses,
-                                                                                 progress, metrics_prefix='cam/')
-                lidar_losses, lidar_metrics = self.compute_common_losses_and_metrics(batch, preds['lidar_disp'], poses,
-                                                                                     progress, metrics_prefix='lidar/')
+
+                cam_hinted_output = self._monoscale_hinted_loss(
+                    batch['target_view_original'],
+                    batch['source_views_original'],
+                    preds['cam_disp'],
+                    batch['sparse_projected_lidar_original'],
+                    batch['intrinsics'],
+                    poses,
+                    progress=progress)
+                cam_losses = cam_hinted_output['loss']
+                cam_metrics = {'cam/' + k: v for k, v in cam_hinted_output['metrics'].items()}
+
+                lidar_hinted_output = self._monoscale_hinted_loss(
+                    batch['target_view_original'],
+                    batch['source_views_original'],
+                    preds['lidar_disp'],
+                    batch['sparse_projected_lidar_original'],
+                    batch['intrinsics'],
+                    poses,
+                    progress=progress)
+                lidar_losses = lidar_hinted_output['loss']
+                lidar_metrics = {'lidar/' + k: v for k, v in lidar_hinted_output['metrics'].items()}
+
+                #cam_losses, cam_metrics = self.compute_common_losses_and_metrics(batch, preds['cam_disp'], poses, progress, metrics_prefix='cam/')
+                #lidar_losses, lidar_metrics = self.compute_common_losses_and_metrics(batch, preds['lidar_disp'], poses, progress, metrics_prefix='lidar/')
 
                 losses += cam_losses + lidar_losses
                 metrics.update({**cam_metrics, **lidar_metrics})
