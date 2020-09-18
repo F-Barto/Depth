@@ -405,7 +405,9 @@ class MonocularSemiSupDepth(pl.LightningModule):
                     losses.append(selfteaching_output['loss'])
                     metrics.update(selfteaching_output['metrics'])
 
-            return { **preds, 'loss': sum(losses), 'metrics': metrics}
+            total_loss = sum(losses)
+
+            return { **preds, 'loss': total_loss, 'metrics': metrics}
 
 
     def training_step(self, batch, *args):
@@ -440,27 +442,30 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         output = self(batch)
 
+        log_loss = copy.deepcopy(output['loss'].detach())
+        log_metrics = copy.deepcopy(output['metrics'])
+
         if self.hparams.logger == WANDB_LOGGER_KEY:
             logs = {
-                'train_loss': output['loss'],
-                'metrics': output['metrics']
+                'train_loss': log_loss,
+                'metrics': log_metrics
             }
 
         elif self.hparams.logger == TENSORBOARD_LOGGER_KEY:
             # in PL 0.8.1 can't log nested metrics
             # so need to flatten and group using slash syntax
-            log_metrics = {'train/'+k: v for k,v in output['metrics'].items()}
+            log_metrics = {'train/'+k: v for k,v in log_metrics.items()}
             logs = {
-                'train/full_loss': output['loss'],
+                'train/full_loss': log_loss,
                 **log_metrics
             }
         else:
-            logs = {'train_loss': output['loss']}
+            logs = {'train_loss': log_loss}
 
         results = {
             'loss': output['loss'],
             'log': logs,
-            'progress_bar': {'train_loss': output['loss']}
+            'progress_bar': {'train_loss': log_loss}
         }
 
         return results
