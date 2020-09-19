@@ -165,16 +165,15 @@ class TeacherGuidedDepthResNet(nn.Module):
 
         if self.training:
 
-            weights = self.adaptive_weighting([cam_features[-1], lidar_features[-1]])
-
             outputs = {
                 'inv_depths': [self.scale_inv_depth(d)[0] for d in disps],
                 'cam_disp': cam_disp,
                 'lidar_disp': lidar_disp,
-                'adaptive_weights': weights,
             }
 
             if self.self_teaching:
+                weights = self.adaptive_weighting([cam_features[-1], lidar_features[-1]])
+                outputs['adaptive_weights'] = weights
                 outputs['uncertainties'] = uncertainties
 
         else:
