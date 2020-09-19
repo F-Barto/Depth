@@ -192,13 +192,12 @@ def prepare_images_to_log(learning_phase, batch, output, batch_idx, log_images_i
     img_list = [
         prep_rgb('target_view', batch, i=i),
         prep_inv_depth('inv_depth', output, i=i),
-        prep_depth('depth', output, i=i),
         prep_depth('projected_lidar', batch, i=i)
     ]
 
-    titles = ['target_view', 'inv_depth', 'pred_depth', 'gt_depth']
+    titles = ['target_view', 'inv_depth', 'gt_depth']
 
-    cmaps = [None, 'magma', 'magma', 'magma']
+    cmaps = [None, 'magma', 'magma']
 
     if batch.get('sparse_projected_lidar', None) is not None:
         sparse_projected_lidar = prep_depth('sparse_projected_lidar', batch, i=i)
@@ -206,7 +205,25 @@ def prepare_images_to_log(learning_phase, batch, output, batch_idx, log_images_i
         titles.append('sparse_lidar')
         cmaps.append('magma')
 
-    plt_figure = gridplot(img_list, titles=titles, cmaps=cmaps, cols=len(titles), figsize=(6*len(titles), 6))
+    if 'cam_disp' in output:
+        img_list.append(prep_inv_depth('cam_disp', output, i=i))
+        titles.append('cam_disp')
+        cmaps.append('magma')
+
+    if 'lidar_disp' in output:
+        img_list.append(prep_inv_depth('lidar_disp', output, i=i))
+        titles.append('lidar_disp')
+        cmaps.append('magma')
+
+    if 'uncertainties' in output:
+        img_list.append(prep_inv_depth('uncertainties', output, i=i))
+        titles.append('uncertainties')
+        cmaps.append('magma')
+
+
+
+
+    plt_figure = gridplot(img_list, titles=titles, cmaps=cmaps, cols=4, figsize=(6*4, 6*((len(titles)+1)//4)))
 
     return {prefix: plt_figure}
 

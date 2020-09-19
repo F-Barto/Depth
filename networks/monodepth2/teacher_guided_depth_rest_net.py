@@ -158,12 +158,12 @@ class TeacherGuidedDepthResNet(nn.Module):
         if self.self_teaching:
             uncertainties = [x[('uncertainty', i)] for i in range(4)]
 
-        if self.training:
+        cam_disp = self.cam_decoder(cam_features)
+        cam_disp = self.scale_inv_depth(cam_disp)[0]
+        lidar_disp = self.lidar_decoder(lidar_features)
+        lidar_disp = self.scale_inv_depth(lidar_disp)[0]
 
-            cam_disp = self.cam_decoder(cam_features)
-            cam_disp = self.scale_inv_depth(cam_disp)[0]
-            lidar_disp = self.lidar_decoder(lidar_features)
-            lidar_disp = self.scale_inv_depth(lidar_disp)[0]
+        if self.training:
 
             weights = self.adaptive_weighting([cam_features[-1], lidar_features[-1]])
 
@@ -177,13 +177,15 @@ class TeacherGuidedDepthResNet(nn.Module):
             if self.self_teaching:
                 outputs['uncertainties'] = uncertainties
 
-            return outputs
-
         else:
 
-            outputs = {'inv_depths': self.scale_inv_depth(disps[0])[0]}
+            outputs = {
+                'inv_depths': self.scale_inv_depth(disps[0])[0],
+                'cam_disp': cam_disp,
+                'lidar_disp': lidar_disp,
+            }
 
             if self.self_teaching:
-                outputs['uncertainties'] = uncertainties
+                outputs['uncertainties'] = uncertainties[0]
 
-            return outputs
+        return outputs

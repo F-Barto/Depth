@@ -303,17 +303,25 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 predicted inverse depth
         """
         # Get predicted depth
-        inv_depth = self(batch)['inv_depths'][0]
+        output = self(batch)
+        inv_depth = output['inv_depths'][0]
         depth = inv2depth(inv_depth)
 
         # Calculate predicted metrics
         metrics = compute_depth_metrics(gt=batch['projected_lidar'], pred=depth, **self.hparams.metrics)
         # Return metrics and extra information
-        return {
+
+        result = {
             'metrics': metrics,
             'inv_depth': inv_depth,
-            'depth': depth
+            'depth': depth,
         }
+
+        for key in ['cam_disp', 'lidar_disp', 'uncertainties']:
+            if key in output:
+                result[key] = output[key][0]
+
+        return result
 
     @auto_move_data
     def forward(self, batch):
