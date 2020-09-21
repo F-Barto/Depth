@@ -218,7 +218,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         flip = random.random() < 0.5 if self.training else False
 
-        if flip:
+        if flip and self.training:
             image = flip_lr(image)
 
         if sparse_depth is None:
@@ -232,7 +232,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
             inv_depths = output
             inv_depths = make_list(inv_depths)
 
-            if flip:
+            if flip and self.training:
                 inv_depths = [flip_lr(inv_depth) for inv_depth in inv_depths]
 
             if self.hparams.upsample_depth_maps:
@@ -252,7 +252,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 keys += ['cam_disp', 'lidar_disp'] # even if these are one scales predictions
 
             for key in keys:
-                if flip:
+                if flip and self.training:
                     output[key] = [flip_lr(o) for o in make_list(output[key])]
                 else:
                     output[key] = make_list(output[key])
