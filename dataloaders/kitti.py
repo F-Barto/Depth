@@ -19,6 +19,7 @@ In this module, the docstring follows the NumPy/SciPy formatting rules.
 
 import numpy as np
 from PIL import Image
+import PIL as pil
 from pathlib import Path
 
 from torch.utils.data import Dataset
@@ -141,6 +142,8 @@ class SequentialKittiLoader(Dataset):
             self.samples_and_source_views_paths = [(p, None) for p in img_paths]
 
         terminal_logger.info(f'Dataset for split {self.split_name} ready.\n\n' + '-'*90 + '\n\n')
+
+        self.full_res_shape = (1242, 375)
 
     def __len__ (self):
         return len(self.samples_and_source_views_paths)
@@ -423,9 +426,13 @@ class SequentialKittiLoader(Dataset):
         depth = np.load(file)['velodyne_depth'].astype(np.float32)
         return np.expand_dims(depth, axis=2)
 
-    def read_png_depth(self, file):
-        """Reads a .png depth map."""
-        depth_png = np.array(Image.open(file), dtype=int)
+    def read_png_depth(self, file, resize=None):
+        """Reads a .png depth map anbd optionally resize it."""
+        depth_png = Image.open(file)
+        if resize is not None:
+            depth_png = depth_png.resize(resize, pil.NEAREST)
+        depth_png = np.array(depth_png, dtype=int)
+
         assert (np.max(depth_png) > 255), 'Wrong .png depth file'
         depth = depth_png.astype(np.float) / 256.
         depth[depth_png == 0] = -1.
@@ -477,7 +484,8 @@ class SequentialKittiLoader(Dataset):
                 if not projected_lidar_path.exists():
                     projected_lidar_path = Path(self.gt_depth_root_dir) / 'train' / path_suffix
     
-                projected_lidar = self.read_png_depth(projected_lidar_path)
+                projected_lidar = self.read_png_depth(projected_lidar_path, resize=self.full_res_shape)
+
                 sample['projected_lidar'] = projected_lidar
             
             else:
