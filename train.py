@@ -61,6 +61,7 @@ def main(project_config, hparams, resume=False):
 
         if hparams.get('model_ckpt', None) is not None:
             model = model.load_from_checkpoint(hparams.model_ckpt)
+            model.hparams = hparams
 
         assert hparams.logger in ['wandb', 'tensorboard']
 
