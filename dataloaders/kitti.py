@@ -19,7 +19,6 @@ In this module, the docstring follows the NumPy/SciPy formatting rules.
 
 import numpy as np
 from PIL import Image
-import PIL as pil
 from pathlib import Path
 
 from torch.utils.data import Dataset
@@ -430,7 +429,7 @@ class SequentialKittiLoader(Dataset):
         """Reads a .png depth map anbd optionally resize it."""
         depth_png = Image.open(file)
         if resize is not None:
-            depth_png = depth_png.resize(resize, pil.NEAREST)
+            depth_png = depth_png.resize(resize, Image.NEAREST)
         depth_png = np.array(depth_png, dtype=int)
 
         assert (np.max(depth_png) > 255), 'Wrong .png depth file'
