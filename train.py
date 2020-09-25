@@ -52,12 +52,15 @@ def main(project_config, hparams, resume=False):
     latest_ckpt = experiment_output_dir / 'version_0/last.ckpt'
 
     if resume and latest_ckpt.exists():
-        model.load_from_checkpoint(str(latest_ckpt))
+        model = model.load_from_checkpoint(str(latest_ckpt))
         trainer = Trainer(resume_from_checkpoint=str(latest_ckpt))
         trainer.fit(model)
         trainer.test(model)
 
     else:
+
+        if hparams.get('model_ckpt', None) is not None:
+            model = model.load_from_checkpoint(hparams.model_ckpt)
 
         assert hparams.logger in ['wandb', 'tensorboard']
 
