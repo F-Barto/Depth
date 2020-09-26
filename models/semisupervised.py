@@ -453,7 +453,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         output = self(batch)
 
-        log_loss = copy.deepcopy(output['loss']).detach()
+        log_loss = output['loss']
         log_metrics = copy.deepcopy(output['metrics'])
 
         if self.hparams.logger == WANDB_LOGGER_KEY:
