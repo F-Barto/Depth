@@ -218,7 +218,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         flip = random.random() < 0.5 if self.training else False
 
-        if flip and self.training:
+        if flip:
             image = flip_lr(image)
 
         if sparse_depth is None:
@@ -232,7 +232,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
             inv_depths = output
             inv_depths = make_list(inv_depths)
 
-            if flip and self.training:
+            if flip:
                 inv_depths = [flip_lr(inv_depth) for inv_depth in inv_depths]
 
             if self.hparams.upsample_depth_maps:
@@ -242,7 +242,6 @@ class MonocularSemiSupDepth(pl.LightningModule):
             return inv_depths
 
         else:
-
             keys = ['inv_depths']
 
             if output.get('uncertainties', None) is not None:
@@ -252,7 +251,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 keys += ['cam_disp', 'lidar_disp'] # even if these are one scales predictions
 
             for key in keys:
-                if flip and self.training:
+                if flip:
                     output[key] = [flip_lr(o) for o in make_list(output[key])]
                 else:
                     output[key] = make_list(output[key])
@@ -450,7 +449,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         output = self(batch)
 
-        log_loss = copy.deepcopy(output['loss'].detach())
+        log_loss = copy.deepcopy(output['loss']).detach()
         log_metrics = copy.deepcopy(output['metrics'])
 
         if self.hparams.logger == WANDB_LOGGER_KEY:
@@ -473,7 +472,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         results = {
             'loss': output['loss'],
             'log': logs,
-            'progress_bar': {'train_loss': log_loss}
+            'progress_bar': {'full_loss': log_loss}
         }
 
         return results
