@@ -656,7 +656,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         # Load and initialize schedulers
         if self.hparams.scheduler.name == 'FlatCosAnnealScheduler':
             from schedulers.flat_cos_anneal_scheduler import FlatCosAnnealScheduler
-            step_factor = self.hparams.dataloaders.train.batch_size * self.hparams.trainer.accumulate_grad_batche
+            step_factor = self.hparams.dataloaders.train.batch_size * self.hparams.trainer.accumulate_grad_batches
 
             scheduler = {
                 'scheduler': FlatCosAnnealScheduler(optimizer, step_factor, len(self.train_dataset),
