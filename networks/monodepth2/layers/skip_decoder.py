@@ -60,7 +60,7 @@ class SkipDecoder(nn.Module):
             # upconv_0, pre upsampling
             num_ch_in = self.num_ch_enc[i]
             if 'pixelshuffle' in self.upsample_mode and self.upsample_path != 'direct':
-                do_blur = blur and (i != 4 or blur_at_end)
+                do_blur = blur and (i != 0 or blur_at_end)
                 self.convs[("pixelshuffle", i)] = SubPixelUpsamplingBlock(num_ch_in, blur=do_blur,
                                                                           upscale_factor=self.upscale_factors[i])
             num_ch_in = self.num_ch_enc[i-1]

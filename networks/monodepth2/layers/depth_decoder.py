@@ -43,7 +43,7 @@ class DepthDecoder(nn.Module):
             self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out, activation)
 
             if 'pixelshuffle' in self.upsample_mode:
-                do_blur = blur and (i != 4 or blur_at_end)
+                do_blur = blur and (i != 0 or blur_at_end)
                 self.convs[("pixelshuffle", i)] = SubPixelUpsamplingBlock(num_ch_out, upscale_factor=2, blur=do_blur)
 
             # upconv_1, post upsampling
