@@ -4,14 +4,17 @@ import math
 
 class FlatCosAnnealScheduler(_LRScheduler):
 
-    def __init__(self, optimizer, steps_per_epoch, max_epochs, anneal_start=0.7, anneal_strategy='cos', last_epoch=-1,
+    def __init__(self, optimizer, step_factor, len_dataset, max_epochs, anneal_start=0.7, anneal_strategy='cos', last_epoch=-1,
                  min_lr=0.):
 
         self.validate_params(optimizer, anneal_strategy, anneal_start)
 
         self.optimizer = optimizer
 
-        self.total_steps = steps_per_epoch * max_epochs
+        if len_dataset % step_factor != 0:
+            len_dataset += 1
+
+        self.total_steps = (len_dataset * max_epochs) // step_factor
 
         self.nb_steps_flat = int(self.total_steps * anneal_start) # the number of steps the lr curve is flat
         self.nb_steps_anneal = self.total_steps - self.nb_steps_flat # the number of steps the lr curve is annealing

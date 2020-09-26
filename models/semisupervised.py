@@ -69,10 +69,15 @@ def prepare_data(datasets_config, input_channels=3):
 
     train_dataset = dataset_cls(**datasets_config.train, data_transform=train_transforms,
                                           input_channels=input_channels)
+    print('len train_dataset: ', len(train_dataset))
+
     val_dataset = dataset_cls(**datasets_config.val, data_transform=val_transforms,
                                           input_channels=input_channels)
+    print('len val_dataset: ', len(val_dataset))
+
     test_dataset = dataset_cls(**datasets_config.test, data_transform=test_transforms,
                                           input_channels=input_channels)
+    print('len test_dataset: ', len(test_dataset))
 
     return train_dataset, val_dataset, test_dataset
 
@@ -242,13 +247,10 @@ class MonocularSemiSupDepth(pl.LightningModule):
             return inv_depths
 
         else:
-            keys = ['inv_depths']
+            keys = ['inv_depths', 'cam_disp', 'lidar_disp']
 
             if output.get('uncertainties', None) is not None:
                 keys.append('uncertainties')
-
-            if self.training:
-                keys += ['cam_disp', 'lidar_disp'] # even if these are one scales predictions
 
             for key in keys:
                 if flip:
@@ -256,8 +258,10 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 else:
                     output[key] = make_list(output[key])
 
+                # interpolate preds from all scales to biggest scale
                 if key in ['inv_depths', 'uncertainties'] and  self.hparams.upsample_depth_maps:
                     output[key] = interpolate_scales(output[key], mode='nearest')
+                    # 'cam_disp', 'lidar_disp' are one scales preds so we don't have to interpolate
 
             return output
 
@@ -652,11 +656,11 @@ class MonocularSemiSupDepth(pl.LightningModule):
         # Load and initialize schedulers
         if self.hparams.scheduler.name == 'FlatCosAnnealScheduler':
             from schedulers.flat_cos_anneal_scheduler import FlatCosAnnealScheduler
-            step_factor = self.hparams.dataloaders.train.batch_size * self.hparams.trainer.accumulate_grad_batches
-            steps_per_epoch = len(self.train_dataset) / step_factor
+            step_factor = self.hparams.dataloaders.train.batch_size * self.hparams.trainer.accumulate_grad_batche
 
             scheduler = {
-                'scheduler': FlatCosAnnealScheduler(optimizer, steps_per_epoch, self.hparams.trainer.max_epochs,
+                'scheduler': FlatCosAnnealScheduler(optimizer, step_factor, len(self.train_dataset),
+                                                    self.hparams.trainer.max_epochs,
                                                     **self.hparams.scheduler.options),
                 'name': 'FlatCosAnnealScheduler',
                 'interval': 'step',  # so that scheduler.step() is done at batch-level instead of epoch
