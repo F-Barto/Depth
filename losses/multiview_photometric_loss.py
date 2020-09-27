@@ -334,10 +334,13 @@ class MultiViewPhotometricLoss(LossBase):
             target_sobelx, target_sobely = compute_color_gradients(images[i], self.sobel_kernelx, self.sobel_kernely)
             warped_sobelx, warped_sobely = compute_color_gradients(t_est[i], self.sobel_kernelx, self.sobel_kernely)
 
-            sqrd_err = (target_sobelx - warped_sobelx).pow(2) + (target_sobely - warped_sobely).pow(2)
-            laplacian_losses.append(sqrd_err.sum(1, True))
+            #sqrd_err = (target_sobelx - warped_sobelx).pow(2) + (target_sobely - warped_sobely).pow(2)
+            #err = torch.sqrt(sqrd_err)
+            err = torch.abs(target_sobelx - warped_sobelx) + torch.abs(target_sobely - warped_sobely)
+            err = err.sum(1, True)
+            laplacian_losses.append(err)
 
-        # Return total photometric loss
+            # Return total photometric loss
         return laplacian_losses
 
     ########################################################################################################################
