@@ -14,7 +14,7 @@ class FlatCosAnnealScheduler(_LRScheduler):
         if len_dataset % step_factor != 0:
             len_dataset += 1
 
-        self.total_steps = (len_dataset * max_epochs) // step_factor
+        self.total_steps = (len_dataset  // step_factor) * max_epochs
 
         self.nb_steps_flat = int(self.total_steps * anneal_start) # the number of steps the lr curve is flat
         self.nb_steps_anneal = self.total_steps - self.nb_steps_flat # the number of steps the lr curve is annealing
