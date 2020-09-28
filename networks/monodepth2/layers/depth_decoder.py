@@ -15,7 +15,8 @@ from .common import ConvBlock, Conv3x3, nearest_upsample, SubPixelUpsamplingBloc
 
 class DepthDecoder(nn.Module):
     def __init__(self, num_ch_enc, activation, scales=range(4), num_output_channels=1, use_skips=True,
-                 concat_skips=True, upsample_mode='nearest', blur=True, blur_at_end=True, uncertainty=False):
+                 concat_skips=True, upsample_mode='nearest', blur=True, blur_at_end=True, uncertainty=False,
+                 refine_preds=False):
         super(DepthDecoder, self).__init__()
 
         self.num_output_channels = num_output_channels
@@ -23,6 +24,7 @@ class DepthDecoder(nn.Module):
         self.concat_skips = concat_skips
         self.scales = scales
         self.uncertainty = uncertainty
+        self.refine_preds = refine_preds
 
         available_upmodes = ['nearest', 'pixelshuffle', 'res-pixelshuffle']
         if upsample_mode not in available_upmodes:
@@ -39,6 +41,8 @@ class DepthDecoder(nn.Module):
         for i in range(4, -1, -1):
             # upconv_0, pre upsampling
             num_ch_in = self.num_ch_enc[-1] if i == 4 else self.num_ch_dec[i + 1]
+            num_ch_in += 1 if self.refine_preds and i < 4 else 0
+            num_ch_in += 1 if self.refine_preds and i < 4  and self.uncertainty else 0
             num_ch_out = self.num_ch_dec[i]
             self.convs[("upconv", i, 0)] = ConvBlock(num_ch_in, num_ch_out, activation)
 
@@ -69,6 +73,12 @@ class DepthDecoder(nn.Module):
         # decoder
         x = input_features[-1]
         for i in range(4, -1, -1):
+
+            if self.refine_preds and i<4:
+                x = [x, self.outputs[("disp", i)]]
+                if self.uncertainty:
+                    x.append(self.outputs[("uncertainty", i)])
+                x = torch.cat(x, 1)
 
             x = self.convs[("upconv", i, 0)](x)
 
