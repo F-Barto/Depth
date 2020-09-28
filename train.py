@@ -60,8 +60,8 @@ def main(project_config, hparams, resume=False):
     else:
 
         if hparams.get('model_ckpt', None) is not None:
-            model = model.load_from_checkpoint(hparams.model_ckpt)
-            model.hparams = hparams
+            saved_state_dict = torch.load(hparams.model_ckpt, map_location='cpu')['state_dict']
+            model.load_state_dict(saved_state_dict)
 
         assert hparams.logger in ['wandb', 'tensorboard']
 
