@@ -74,7 +74,7 @@ class DepthDecoder(nn.Module):
         x = input_features[-1]
         for i in range(4, -1, -1):
 
-            if self.refine_preds and i<4:
+            if self.refine_preds and i < 3:
                 x = [x, self.outputs[("disp", i)]]
                 if self.uncertainty:
                     x.append(self.outputs[("uncertainty", i)])
