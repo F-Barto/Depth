@@ -75,9 +75,9 @@ class DepthDecoder(nn.Module):
         for i in range(4, -1, -1):
 
             if self.refine_preds and i < 3:
-                x = [x, self.outputs[("disp", i)]]
+                x = [x, self.outputs[("disp", i+1)]]
                 if self.uncertainty:
-                    x.append(self.outputs[("uncertainty", i)])
+                    x.append(self.outputs[("uncertainty", i+1)])
                 x = torch.cat(x, 1)
 
             x = self.convs[("upconv", i, 0)](x)
