@@ -53,17 +53,19 @@ class AttentionGuidance(nn.Module):
     def __init__(self, inplanes, activation_cls, attention_scheme='res-sig'):
         super().__init__()
 
-        if 'concat' == attention_scheme:
+        self.attention_scheme = attention_scheme
+
+        if 'concat' == self.attention_scheme:
             pass
-        elif 'concat' in attention_scheme:
-            if 'concatlin' in attention_scheme:
+        elif 'concat' in self.attention_scheme:
+            if 'concatlin' in self.attention_scheme:
                 self.pre_conv_3x3 = nn.Conv2d(inplanes * 2, inplanes * 2, kernel_size=3, padding=1, bias=True)
                 nn.init.kaiming_normal_(self.pre_conv_3x3.weight, mode='fan_out', nonlinearity='relu')
 
-            self.attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
+            self.attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme)
         else:
-            self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
-            self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
+            self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme)
+            self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme)
 
         if 'preconv' in self.attention_scheme:
             self.preconv_lidar = nn.Sequential(
@@ -78,10 +80,9 @@ class AttentionGuidance(nn.Module):
                 activation_cls(inplace=True)
             )
 
-        if 'softmax' in attention_scheme:
+        if 'softmax' in self.attention_scheme:
             self.softmax = torch.nn.Softmax(dim=0)
 
-        self.attention_scheme = attention_scheme
 
     def fuse_features(self, original_features, attentive_masks):
         if 'res' in self.attention_scheme:
