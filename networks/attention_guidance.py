@@ -23,6 +23,20 @@ class AttentionBlock(nn.Module):
         else:
             planes= inplanes//2
 
+        if 'preconv' in attention_scheme:
+            self.preconv_lidar = nn.Sequential(
+                nn.Conv2d(inplanes, inplanes, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(planes),
+                activation_cls(inplace=True)
+            )
+
+            self.preconv_rgb = nn.Sequential(
+                nn.Conv2d(inplanes, inplanes, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(planes),
+                activation_cls(inplace=True)
+            )
+
+
         self.conv_1x1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.conv_3x3 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, bias=False)
@@ -90,6 +104,10 @@ class AttentionGuidance(nn.Module):
             raise ValueError(f'Attention scheme invalid either res or mult: {self.attention_scheme}')
 
     def forward(self, image_features, lidar_features, **kwargs):
+
+        if 'preconv' in self.attention_scheme:
+            lidar_features = self.preconv_lidar(lidar_features)
+            image_features = self.preconv_rgb(image_features)
 
         c = torch.cat([image_features, lidar_features], dim=1)
 
