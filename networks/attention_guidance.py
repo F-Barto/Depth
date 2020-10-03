@@ -8,11 +8,11 @@ class AttentionBlock(nn.Module):
 
         self.activation = activation_cls(inplace=True)
 
-        if 'sig' in self.attention_scheme:
+        if 'sig' in attention_scheme:
             self.act = nn.Sigmoid()
-        elif 'tan' in self.attention_scheme:
+        elif 'tan' in attention_scheme:
             self.act = nn.Tanh()
-        elif 'softmax' in self.attention_scheme:
+        elif 'softmax' in attention_scheme:
             # if we use softmax, it will be used later, so for now just make it the usual conv + bn + activation
             self.act = activation_cls(inplace=True)
         else:
@@ -22,19 +22,6 @@ class AttentionBlock(nn.Module):
             planes = inplanes
         else:
             planes= inplanes//2
-
-        if 'preconv' in self.attention_scheme:
-            self.preconv_lidar = nn.Sequential(
-                nn.Conv2d(inplanes, inplanes, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(planes),
-                activation_cls(inplace=True)
-            )
-
-            self.preconv_rgb = nn.Sequential(
-                nn.Conv2d(inplanes, inplanes, kernel_size=3, padding=1, bias=False),
-                nn.BatchNorm2d(planes),
-                activation_cls(inplace=True)
-            )
 
 
         self.conv_1x1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
@@ -77,6 +64,19 @@ class AttentionGuidance(nn.Module):
         else:
             self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
             self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, attention_scheme)
+
+        if 'preconv' in self.attention_scheme:
+            self.preconv_lidar = nn.Sequential(
+                nn.Conv2d(inplanes, inplanes, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(inplanes),
+                activation_cls(inplace=True)
+            )
+
+            self.preconv_rgb = nn.Sequential(
+                nn.Conv2d(inplanes, inplanes, kernel_size=3, padding=1, bias=False),
+                nn.BatchNorm2d(inplanes),
+                activation_cls(inplace=True)
+            )
 
         if 'softmax' in attention_scheme:
             self.softmax = torch.nn.Softmax(dim=0)
