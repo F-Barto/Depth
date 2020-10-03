@@ -8,11 +8,11 @@ class AttentionBlock(nn.Module):
 
         self.activation = activation_cls(inplace=True)
 
-        if 'sig' in attention_scheme:
+        if 'sig' in self.attention_scheme:
             self.act = nn.Sigmoid()
-        elif 'tan' in attention_scheme:
+        elif 'tan' in self.attention_scheme:
             self.act = nn.Tanh()
-        elif 'softmax' in attention_scheme:
+        elif 'softmax' in self.attention_scheme:
             # if we use softmax, it will be used later, so for now just make it the usual conv + bn + activation
             self.act = activation_cls(inplace=True)
         else:
@@ -23,7 +23,7 @@ class AttentionBlock(nn.Module):
         else:
             planes= inplanes//2
 
-        if 'preconv' in attention_scheme:
+        if 'preconv' in self.attention_scheme:
             self.preconv_lidar = nn.Sequential(
                 nn.Conv2d(inplanes, inplanes, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(planes),
