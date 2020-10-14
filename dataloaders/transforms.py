@@ -145,6 +145,7 @@ class LidarDropCircle2D():
         self.gamma = (drop_prob / circle_area) * ((height * width) / valid_area)
 
         self.valid_region = (height - block_size // 2, width - block_size // 2)
+        
     def drop(self, x, return_mask=False, return_inverse=False):
 
         assert x.ndim == 2, \

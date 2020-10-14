@@ -27,6 +27,7 @@ from networks.monodepth2.depth_rest_net import DepthResNet
 from networks.monodepth2.pose_res_net import PoseResNet
 from networks.monodepth2.guided_depth_rest_net import GuidedDepthResNet
 from networks.monodepth2.teacher_guided_depth_rest_net import TeacherGuidedDepthResNet
+from networks.custom.guided_sparse_dilated_depth_net import GuidedSparseDepthResNet
 
 from networks.monodepth_original.depth_res_net import DepthResNet as OriginalDepthResNet
 from networks.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
@@ -117,6 +118,9 @@ class MonocularSemiSupDepth(pl.LightningModule):
         elif self.hparams.model.depth_net.name == 'guiding':
             assert train_dataset.load_sparse_depth, "Sparse depth signal is necessary for feature guidance."
             self.depth_net = GuidedDepthResNet(**hparams.model.depth_net.options, input_channels=self.input_channels)
+        elif self.hparams.model.depth_net.name == 'sparse-guiding':
+            assert train_dataset.load_sparse_depth, "Sparse depth signal is necessary for feature guidance."
+            self.depth_net = GuidedSparseDepthResNet(**hparams.model.depth_net.options, input_channels=self.input_channels)
         elif self.hparams.model.depth_net.name == 'teacher-guiding':
             assert train_dataset.load_sparse_depth, "Sparse depth signal is necessary for feature guidance."
             self.depth_net = TeacherGuidedDepthResNet(**hparams.model.depth_net.options,

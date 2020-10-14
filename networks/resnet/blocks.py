@@ -13,16 +13,16 @@ def conv7x7(in_planes, out_planes, stride=1, groups=1, bias=False, spectral_norm
     else:
         return nn.Conv2d(in_planes, out_planes, kernel_size=7, stride=stride, padding=3, groups=groups, bias=bias)
 
-def conv3x3(in_planes, out_planes, stride=1, groups=1, bias=False, spectral_norm=False, n_power_iterations=5):
+def conv3x3(in_planes, out_planes, stride=1, groups=1, bias=False, dilation=1, spectral_norm=False, n_power_iterations=5):
     """3x3 convolution with padding"""
 
     if spectral_norm:
         # use spectral norm fc, because bound are tight for 1x1 convolutions
-        conv_layer = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=1, padding=1, groups=groups, bias=True)
+        conv_layer = nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=1, padding=dilation, dilation=dilation, groups=groups, bias=True)
         return spectral_norm_conv(conv_layer, n_power_iterations=n_power_iterations)
 
     else:
-        return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, groups=groups, bias=bias)
+        return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=dilation, dilation=dilation, groups=groups, bias=bias)
 
 
 def conv1x1(in_planes, out_planes, stride=1, bias=False, spectral_norm=False, n_power_iterations=5):
@@ -40,7 +40,7 @@ def conv1x1(in_planes, out_planes, stride=1, bias=False, spectral_norm=False, n_
 class BasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, inplanes, planes, activation_cls, stride=1, downsample=None, groups=1,
+    def __init__(self, inplanes, planes, activation_cls, stride=1, dilation=1, downsample=None, groups=1,
                  base_width=64, norm_layer=None):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
@@ -49,10 +49,10 @@ class BasicBlock(nn.Module):
             raise ValueError('BasicBlock only supports groups=1 and base_width=64')
 
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
-        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.conv1 = conv3x3(inplanes, planes, stride, dilation=dilation)
         self.bn1 = norm_layer(planes)
         self.activation = activation_cls(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
+        self.conv2 = conv3x3(planes, planes, dilation=dilation)
         self.bn2 = norm_layer(planes)
         self.downsample = downsample
 
@@ -86,7 +86,7 @@ class Bottleneck(nn.Module):
 
     expansion = 4
 
-    def __init__(self, inplanes, planes, activation_cls, stride=1, downsample=None, groups=1,
+    def __init__(self, inplanes, planes, activation_cls, stride=1, downsample=None, groups=1, dilation=1,
                  base_width=64, norm_layer=None):
         super(Bottleneck, self).__init__()
         if norm_layer is None:
@@ -96,7 +96,7 @@ class Bottleneck(nn.Module):
         # Both self.conv2 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv1x1(inplanes, width)
         self.bn1 = norm_layer(width)
-        self.conv2 = conv3x3(width, width, stride, groups)
+        self.conv2 = conv3x3(width, width, stride, groups, dilation=dilation,)
         self.bn2 = norm_layer(width)
         self.conv3 = conv1x1(width, planes * self.expansion)
         self.bn3 = norm_layer(planes * self.expansion)
