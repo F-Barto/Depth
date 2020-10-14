@@ -22,8 +22,7 @@ class DilatedResNetEncoder(nn.Module):
         self.base_width = width_per_group
 
         ############### first conv ###############
-        self.conv1 = conv7x7(input_channels, self.inplanes, stride=2, bias=self.no_first_norm)
-
+        self.conv1 = conv7x7(input_channels, self.inplanes, stride=2, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.activation = activation(inplace=True)
 
