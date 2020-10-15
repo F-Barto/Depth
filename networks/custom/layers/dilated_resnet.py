@@ -10,7 +10,7 @@ class DilatedResNetEncoder(nn.Module):
                  norm_layer=None, input_channels=3, **kwargs):
         super(DilatedResNetEncoder, self).__init__()
 
-        self.num_ch_enc = np.array([64, 64, 128, 256, 512])
+        self.num_ch_enc = np.array([64, 64, 512])
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
@@ -31,8 +31,8 @@ class DilatedResNetEncoder(nn.Module):
         ############### body ###############
         self.layer1 = self._make_layer(block, 64, layers[0], activation, **kwargs)
         self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2, **kwargs)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=2, dilation=2, **kwargs)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=2, dilation=4, **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=2, **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=4, **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -79,10 +79,12 @@ class DilatedResNetEncoder(nn.Module):
         x = self.conv1(x)
         x = self.bn1(x)
         self.features.append(self.activation(x))
+
         self.features.append(self.layer1(self.pooling(self.features[-1])))
-        self.features.append(self.layer2(self.features[-1]))
-        self.features.append(self.layer3(self.features[-1]))
-        self.features.append(self.layer4(self.features[-1]))
+
+        feature = self.layer2(self.features[-1])
+        feature = self.layer3(feature)
+        self.features.append(self.layer4(feature))
 
         return self.features
 

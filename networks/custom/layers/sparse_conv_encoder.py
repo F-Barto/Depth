@@ -59,7 +59,7 @@ class SparseConvEncoder(nn.Module):
 
         self.first_conv = SparseConv7x7(self.input_channels, self.inplanes, activation, stride=2, mask_pool=True)
 
-        self.num_ch_enc = np.array([16, 16, 32, 64, 64])
+        self.num_ch_enc = np.array([16, 16, 64])
 
         ############### body ###############
         self.layer1 = self._make_layer(16, nb_blocks[0], activation, stride=2,
@@ -100,8 +100,9 @@ class SparseConvEncoder(nn.Module):
 
         self.features.append(self.first_conv((x,m)))
         self.features.append(self.layer1(self.features[-1]))
-        self.features.append(self.layer2(self.features[-1]))
-        self.features.append(self.layer3(self.features[-1]))
-        self.features.append(self.layer4(self.features[-1]))
+
+        feature = self.layer2(self.features[-1])
+        feature = self.layer3(feature)
+        self.features.append(self.layer4(feature))
 
         return self.features

@@ -48,11 +48,11 @@ from utils.depth import inv2depth, depth2inv, compute_depth_metrics
 from utils.common_logging import average_metrics
 from utils.wandb_logging import prepare_images_to_log as wandb_prep_images
 from utils.tensorboard_logging import prepare_images_to_log as tensorboard_prep_images
-from utils.types import is_list
 from utils.loading import load_tri_network
 from utils.misc import make_list
 
-from pprint import pprint
+from .loss_handlers import self_teaching_loss_handler
+
 
 IMPLEMENTED_ROTATION_MODES = ['euler']
 TENSORBOARD_LOGGER_KEY = 'tensorboard'
@@ -146,32 +146,43 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         ################### Losses Definition #####################
 
+
         self.hinted_supervision = False
-        if hparams.losses.get('HintedMultiViewPhotometricLoss', None) is not None:
+        if self.hparams.losses.get('HintedMultiViewPhotometricLoss', None) is not None:
             self.hinted_supervision = True
-            self._hinted_loss = HintedMultiViewPhotometricLoss(**hparams.losses.HintedMultiViewPhotometricLoss)
+
+            if self.hparams.model.depth_net.name == 'sparse-guiding':
+                self.hparams.losses.HintedMultiViewPhotometricLoss.supervised_num_scales = 1
+                self.hparams.losses.HintedMultiViewPhotometricLoss.num_scales = 1
+
+            self._hinted_loss = HintedMultiViewPhotometricLoss(**self.hparams.losses.HintedMultiViewPhotometricLoss)
 
         else:
+
+            if self.hparams.model.depth_net.name == 'sparse-guiding':
+                self.hparams.losses.MultiViewPhotometricLoss.num_scales = 1
+
             # Photometric loss used as main supervisory signal
-            self.self_supervised_loss = MultiViewPhotometricLoss(**hparams.losses.MultiViewPhotometricLoss)
+            self.self_supervised_loss = MultiViewPhotometricLoss(**self.hparams.losses.MultiViewPhotometricLoss)
 
             if self.hparams.losses.get('supervised_loss_weight', 0.0) > 0.0:
-                self.supervised_loss = ReprojectedLoss(**hparams.losses.SupervisedLoss)
+                self.supervised_loss = ReprojectedLoss(**self.hparams.losses.SupervisedLoss)
                 self.supervised_loss_weight = hparams.losses.supervised_loss_weight
 
-        if hparams.losses.get('velocity_loss_weight', 0.0) > 0.0:
-            assert hparams.datasets.train.load_pose == True, 'GT translation magnitude is required for velocity loss.'
+        if self.hparams.losses.get('velocity_loss_weight', 0.0) > 0.0:
+            assert self.hparams.datasets.train.load_pose == True, 'GT translation magnitude is required for velocity loss.'
             self.velocity_supervision = True
             self._velocity_loss = VelocityLoss()
             self.velocity_loss_weight = hparams.losses.velocity_loss_weight
         else:
-            assert hparams.datasets.train.load_pose == False, \
+            assert self.hparams.datasets.train.load_pose == False, \
                 'GT translation magnitude should not be load if no velocity supervision.'
 
         if self.hparams.model.depth_net.name == 'teacher-guiding':
+
             self._selfteaching_loss = MultimodalSelfTeachingLoss(4)
 
-            monoscale_hinted_loss_params = copy.deepcopy(hparams.losses.HintedMultiViewPhotometricLoss)
+            monoscale_hinted_loss_params = copy.deepcopy(self.hparams.losses.HintedMultiViewPhotometricLoss)
             monoscale_hinted_loss_params.supervised_num_scales = 1
             monoscale_hinted_loss_params.num_scales = 1
             self._monoscale_hinted_loss = HintedMultiViewPhotometricLoss(**monoscale_hinted_loss_params)
@@ -251,7 +262,11 @@ class MonocularSemiSupDepth(pl.LightningModule):
             return inv_depths
 
         else:
-            keys = ['inv_depths', 'cam_disp', 'lidar_disp']
+
+            if self.hparams.model.depth_net.name == 'sparse-guiding':
+                keys = ['disp', 'coarse_disp']
+            else:
+                keys = ['inv_depths', 'cam_disp', 'lidar_disp']
 
             if output.get('uncertainties', None) is not None:
                 keys.append('uncertainties')
@@ -311,7 +326,10 @@ class MonocularSemiSupDepth(pl.LightningModule):
         """
         # Get predicted depth
         output = self(batch)
-        inv_depth = output['inv_depths'][0]
+
+        output_key = 'disp' if self.hparams.model.depth_net.name == 'sparse-guiding' else 'inv_depths'
+
+        inv_depth = output[output_key][0]
         depth = inv2depth(inv_depth)
 
         # Calculate predicted metrics
@@ -324,7 +342,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
             'depth': depth,
         }
 
-        for key in ['cam_disp', 'lidar_disp', 'uncertainties']:
+        for key in ['cam_disp', 'lidar_disp', 'uncertainties', 'coarse_disp']:
             if key in output:
                 result[key] = output[key][0]
 
@@ -370,7 +388,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         }
 
         if not isinstance(output, dict):
-            preds['inv_depths'] = output
+            preds['inv_depths'] = output # case we return inv_depths as list
         else:
             preds.update(output)
 
@@ -379,46 +397,27 @@ class MonocularSemiSupDepth(pl.LightningModule):
         else:
             progress = self.current_epoch / self.hparams.trainer.max_epochs
 
-            losses, metrics = self.compute_common_losses_and_metrics(batch, preds['inv_depths'], poses, progress)
+            if self.hparams.model.depth_net.name == 'sparse-guiding':
 
-            if 'cam_disp' in preds and 'lidar_disp' in preds:
+                losses, metrics = self.compute_common_losses_and_metrics(batch, preds['disp'], poses, progress)
 
-                cam_hinted_output = self._monoscale_hinted_loss(
-                    batch['target_view_original'],
-                    batch['source_views_original'],
-                    preds['cam_disp'],
-                    batch['sparse_projected_lidar_original'],
-                    batch['intrinsics'],
-                    poses,
-                    progress=progress)
-                cam_losses = cam_hinted_output['loss']
-                cam_metrics = {'cam/' + k: v for k, v in cam_hinted_output['metrics'].items()}
+                if 'coarse_disp' in preds:
+                    coarse_losses, coarse_metrics = \
+                        self.compute_common_losses_and_metrics(batch, preds['coarse_disp'], poses,
+                                                               progress, metrics_prefix='coarse')
 
-                lidar_hinted_output = self._monoscale_hinted_loss(
-                    batch['target_view_original'],
-                    batch['source_views_original'],
-                    preds['lidar_disp'],
-                    batch['sparse_projected_lidar_original'],
-                    batch['intrinsics'],
-                    poses,
-                    progress=progress)
-                lidar_losses = lidar_hinted_output['loss']
-                lidar_metrics = {'lidar/' + k: v for k, v in lidar_hinted_output['metrics'].items()}
+                losses += coarse_losses
+                coarse_metrics.update(metrics)
 
-                #cam_losses, cam_metrics = self.compute_common_losses_and_metrics(batch, preds['cam_disp'], poses, progress, metrics_prefix='cam/')
-                #lidar_losses, lidar_metrics = self.compute_common_losses_and_metrics(batch, preds['lidar_disp'], poses, progress, metrics_prefix='lidar/')
+            else:
+                losses, metrics = self.compute_common_losses_and_metrics(batch, preds['inv_depths'], poses, progress)
 
-                losses += cam_losses + lidar_losses
-                metrics.update({**cam_metrics, **lidar_metrics})
-
-                if 'uncertainties' in preds:
-                    weights = preds.get('adaptive_weights', None)
-
-                    selfteaching_output = self._selfteaching_loss( [preds['cam_disp'][0], preds['lidar_disp'][0]],
-                                                                   preds['inv_depths'], preds['uncertainties'],
-                                                                   weights = weights)
-                    losses.append(selfteaching_output['loss'])
-                    metrics.update(selfteaching_output['metrics'])
+                if 'cam_disp' in preds and 'lidar_disp' in preds:
+                    st_losses, st_metrics = self_teaching_loss_handler(batch, preds, poses, progress,
+                                                                       self._monoscale_hinted_loss,
+                                                                       self._selfteaching_loss)
+                    losses += st_losses
+                    metrics.update(st_metrics)
 
             total_loss = sum(losses)
 

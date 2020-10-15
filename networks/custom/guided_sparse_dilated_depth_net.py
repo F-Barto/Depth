@@ -4,7 +4,7 @@ from functools import partial
 
 from networks.custom.layers.dilated_resnet import resnet18
 from networks.custom.layers.sparse_conv_encoder import SparseConvEncoder, SparseConv1x1
-from networks.monodepth2.layers.depth_decoder import DepthDecoder
+from networks.custom.layers.skip_decoder import SkipDecoder
 from networks.monodepth2.layers.common import disp_to_depth, get_activation
 from networks.attention_guidance import AttentionGuidance
 
@@ -43,7 +43,6 @@ class GuidedSparseDepthResNet(nn.Module):
 
         self.num_ch_enc = self.encoder.num_ch_enc
 
-
         self.extend_lidar = nn.ModuleDict()
         for i in range(len(self.num_ch_enc )):
             in_chans = self.lidar_encoder.num_ch_enc[i]
@@ -52,7 +51,6 @@ class GuidedSparseDepthResNet(nn.Module):
             self.extend_lidar.update({
                 f"extend_lidar{i}": SparseConv1x1(in_chans, out_chans ,activation_cls)
             })
-
 
         skip_features_factor = 2 if ('concat' in attention_scheme) else 1
         self.num_ch_skips = [skip_features_factor * num_ch for num_ch in self.num_ch_enc]
@@ -68,14 +66,13 @@ class GuidedSparseDepthResNet(nn.Module):
             else:
                 print(f"guidance {guidance} not implemented")
 
-        self.decoder = DepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=120.0)
 
     def forward(self, cam_input, lidar_input):
         """
         Runs the network and returns inverse depth maps
-        (4 scales if training and 1 if not).
         """
 
         nb_features = len(self.num_ch_enc)
@@ -95,11 +92,8 @@ class GuidedSparseDepthResNet(nn.Module):
             guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i])
             self.guided_features.append(guided_feature)
 
-        x = self.decoder(self.guided_features)
+        outputs = self.decoder(self.guided_features)
 
-        disps = [x[('disp', i)] for i in range(4)]
+        outputs = {k: self.scale_inv_depth(v)[0] for k,v in outputs.items()}
 
-        if self.training:
-            return [self.scale_inv_depth(d)[0] for d in disps]
-        else:
-            return self.scale_inv_depth(disps[0])[0]
+        return outputs
