@@ -37,7 +37,7 @@ class GuidedSparseDepthResNet(nn.Module):
         activation_cls = get_activation(activation)
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
-        self.encoder = resnet18(activation_cls, input_channels=input_channels,)
+        self.encoder = resnet18(activation_cls, input_channels=input_channels)
         self.lidar_encoder = SparseConvEncoder([3,3,3,3], activation_cls,
                                                dilation_rates=dilation_rates, combination=combination)
 

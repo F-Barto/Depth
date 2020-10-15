@@ -63,13 +63,13 @@ class DilatedResNetEncoder(nn.Module):
 
         layers = []
 
-        layers.append(block(self.inplanes, planes, activation, stride, downsample, self.groups,
-                            self.base_width, norm_layer))
+        layers.append(block(self.inplanes, planes, activation, stride, downsample=downsample,
+                            groups=self.groupsself.groups, base_width=self.base_width, norm_layer=norm_layer))
         self.inplanes = planes * block.expansion
 
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, activation, groups=self.groups,
-                                base_width=self.base_width, norm_layer=norm_layer, dilation=dilation))
+            layers.append(block(self.inplanes, planes, activation, dilation=dilation,
+                                groups=self.groups, base_width=self.base_width, norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 
