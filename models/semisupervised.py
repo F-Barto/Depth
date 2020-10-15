@@ -273,7 +273,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
             for key in keys:
                 if flip:
-                    output[key] = [flip_lr(o) for o in make_list(output[key])]
+                    output[key] = [flip_lr(o) for o in make_list(output[key]) if key in output]
                 else:
                     output[key] = make_list(output[key])
 
