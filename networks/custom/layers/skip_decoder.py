@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 from collections import OrderedDict
-from .common import ConvBlock, Conv3x3, nearest_upsample, SubPixelUpsamplingBlock
+from networks.monodepth2.layers.common import ConvBlock, Conv3x3, nearest_upsample, SubPixelUpsamplingBlock
 
 
 class Conv1x1Block(nn.Module):
