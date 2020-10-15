@@ -158,4 +158,4 @@ class SkipDecoder(nn.Module):
                 'disp': refined_disp
             }
 
-        return {'disp', disp}
+        return {'disp': disp}
