@@ -64,7 +64,7 @@ class DilatedResNetEncoder(nn.Module):
         layers = []
 
         layers.append(block(self.inplanes, planes, activation, stride, downsample=downsample,
-                            groups=self.groupsself.groups, base_width=self.base_width, norm_layer=norm_layer))
+                            groups=self.groups, base_width=self.base_width, norm_layer=norm_layer))
         self.inplanes = planes * block.expansion
 
         for _ in range(1, blocks):
