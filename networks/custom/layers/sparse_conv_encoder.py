@@ -82,13 +82,13 @@ class SparseConvEncoder(nn.Module):
             layers.append(SparseConv3x3(self.inplanes, planes, activation))
         else:
             layers.append(SparseConv3x3(self.inplanes, planes, activation, stride=stride, mask_pool=True))
-
         self.inplanes = planes
+
+        if dilation_rates is not None:
+            layers.append(ParallelDilatedSparseConvolutions(self.inplanes, planes, activation,
+                                                            dilation_rates, **kwargs))
+
         for i in range(1, blocks):
-            if dilation_rates is not None and i == 1:
-                layers.append(ParallelDilatedSparseConvolutions(self.inplanes, planes, activation,
-                                                                dilation_rates, **kwargs))
-            else:
                 layers.append(SparseConv3x3(self.inplanes, planes, activation))
 
         return nn.Sequential(*layers)
