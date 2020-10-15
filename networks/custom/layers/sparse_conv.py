@@ -35,7 +35,8 @@ class SparseConv(nn.Module):
         if self.if_bias:
             x = x + self.bias.view(1, self.bias.size(0), 1, 1).expand_as(x)
 
-        m = self.pool(m)
+        if self.mask_pool:
+            m = self.pool(m)
 
         return x, m
 
