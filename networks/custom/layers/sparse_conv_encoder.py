@@ -51,6 +51,8 @@ class SparseConvEncoder(nn.Module):
             assert len(dilation_rates) == len(nb_blocks)
             for list_dr in dilation_rates:
                 assert isinstance(list_dr, list)
+        else:
+            dilation_rates = [None]*4
 
         self.input_channels = input_channels
         self.inplanes = 16
