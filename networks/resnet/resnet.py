@@ -97,8 +97,8 @@ class ResNet(nn.Module):
                 layers.append(block(self.inplanes, planes, activation, **kwargs))
 
         else:
-            layers.append(block(self.inplanes, planes, activation, stride, downsample, self.groups,
-                                self.base_width, norm_layer))
+            layers.append(block(self.inplanes, planes, activation, stride, downsample=downsample, groups=self.groups,
+                                base_width=self.base_width, norm_layer=norm_layer))
             self.inplanes = planes * block.expansion
             for _ in range(1, blocks):
                 layers.append(block(self.inplanes, planes, activation, groups=self.groups,
