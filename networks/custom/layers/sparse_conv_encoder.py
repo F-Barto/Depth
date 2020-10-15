@@ -7,7 +7,7 @@ from .parallel_dilated_sparse_convolutions import ParallelDilatedSparseConvoluti
 
 class SparseConv1x1(nn.Module):
     def __init__(self, in_channel, out_channel, activation_cls, bias=True):
-        super(SparseConv3x3, self).__init__()
+        super(SparseConv1x1, self).__init__()
         self.sparse_conv = SparseConv(in_channel, out_channel, 1, padding=0, bias=bias)
         self.activation = activation_cls(inplace=True)
 
@@ -32,7 +32,7 @@ class SparseConv3x3(nn.Module):
 
 class SparseConv7x7(nn.Module):
     def __init__(self, in_channel, out_channel, activation_cls, stride=1, bias=True, mask_pool=False):
-        super(SparseConv3x3, self).__init__()
+        super(SparseConv7x7, self).__init__()
         self.sparse_conv = SparseConv(in_channel, out_channel, 7,
                                       stride=stride, padding=3, bias=bias, mask_pool=mask_pool)
         self.activation = activation_cls(inplace=True)
