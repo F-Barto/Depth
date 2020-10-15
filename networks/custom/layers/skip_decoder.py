@@ -70,7 +70,7 @@ class SkipDecoder(nn.Module):
 
         # decoder
         self.convs = OrderedDict()
-        for i in range(self.scales, 1, -1): # [3, 2]
+        for i in range(self.scales-1, -1, -1): # [2, 1, 0]
             # upconv_0, pre upsampling
             num_ch_in = self.num_ch_enc[i]
             if 'pixelshuffle' in self.upsample_mode and self.upsample_path != 'direct':
@@ -121,7 +121,7 @@ class SkipDecoder(nn.Module):
 
         concat = self.upsample(input_features[-1], self.scales)
 
-        for i in range(self.scales-1, 0, -1): # [2, 1]
+        for i in range(self.scales-1, -1, -1): # [2, 1]
 
             if self.upsample_path == 'conv1cascaded':
                 skip = self.convs[("skipconv", i)](input_features[i])
@@ -141,13 +141,17 @@ class SkipDecoder(nn.Module):
 
         x = self.concatconv(concat)
 
+        """
         if 'pixelshuffle' in self.upsample_mode:
             up_x = self.last_pixelshuffle(x)
         else:
             out_dispconv = self.dispconv(x)
             up_x = nearest_upsample(out_dispconv, scale_factor=2)
-
+            
         disp = self.sigmoid(up_x)
+        """
+
+        disp = self.sigmoid(x)
 
         if self.refinement:
             refined_disp = self.refine_block(self.disp)
