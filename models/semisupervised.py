@@ -272,10 +272,14 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 keys.append('uncertainties')
 
             for key in keys:
+
+                if key not in output:
+                    continue
+
                 if flip:
-                    output[key] = [flip_lr(o) for o in make_list(output[key]) if key in output]
+                    output[key] = [flip_lr(o) for o in make_list(output[key])]
                 else:
-                    output[key] = make_list(output[key] if key in output)
+                    output[key] = make_list(output[key])
 
                 # interpolate preds from all scales to biggest scale
                 if key in ['inv_depths', 'uncertainties'] and  self.hparams.upsample_depth_maps:
