@@ -62,9 +62,9 @@ class SkipDecoder(nn.Module):
 
         self.upscale_factors = np.zeros(len(num_ch_enc)).astype(int)
         if self.upsample_path == 'direct':
-            self.upscale_factors[[-1,-2,-3]] = [8,4,2]
+            self.upscale_factors = [2,4,8]
         else:
-            self.upscale_factors[[-1, -2, -3]] = 2
+            self.upscale_factors = [2]*3
         print(f"SkipDecoder upscale_factors={self.upscale_factors}")
 
 
@@ -119,9 +119,9 @@ class SkipDecoder(nn.Module):
 
     def forward(self, input_features):
 
-        concat = self.upsample(input_features[-1], self.scales)
+        concat = self.upsample(input_features[-1], self.scales-1)
 
-        for i in range(self.scales-1, -1, -1): # [2, 1]
+        for i in range(self.scales-2, -1, -1): # [1, 0]
 
             if self.upsample_path == 'conv1cascaded':
                 skip = self.convs[("skipconv", i)](input_features[i])
