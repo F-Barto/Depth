@@ -129,15 +129,13 @@ class SkipDecoder(nn.Module):
                 skip = input_features[i]
 
             if self.upsample_path == 'direct':
-                if i > 1:
-                    skip = self.upsample(skip, i)
+                skip = self.upsample(skip, i)
                 concat = [concat, skip]
                 concat = torch.cat(concat, 1)
             else: # cascaded
                 concat = [concat, skip]
                 concat = torch.cat(concat, 1)
-                if i > 1:
-                    concat = self.upsample(concat, i)
+                concat = self.upsample(concat, i)
 
         x = self.concatconv(concat)
 
