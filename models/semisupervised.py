@@ -410,8 +410,8 @@ class MonocularSemiSupDepth(pl.LightningModule):
                         self.compute_common_losses_and_metrics(batch, preds['coarse_disp'], poses,
                                                                progress, metrics_prefix='coarse')
 
-                losses += coarse_losses
-                coarse_metrics.update(metrics)
+                    losses += coarse_losses
+                    coarse_metrics.update(metrics)
 
             else:
                 losses, metrics = self.compute_common_losses_and_metrics(batch, preds['inv_depths'], poses, progress)
