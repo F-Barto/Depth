@@ -46,8 +46,6 @@ class SparseMaxPool(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size, stride=stride, padding=padding, dilation=dilation)
         self.pool.require_grad = False
 
-    def forward(self, input):
-        x, m = input
+    def forward(self, m):
         m = self.pool(m)
-
-        return x, m
+        return m
