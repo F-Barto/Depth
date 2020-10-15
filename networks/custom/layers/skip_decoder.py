@@ -149,10 +149,11 @@ class SkipDecoder(nn.Module):
         disp = self.sigmoid(up_x)
         """
 
+        x = self.dispconv(x)
         disp = self.sigmoid(x)
 
         if self.refinement:
-            refined_disp = self.refine_block(self.disp)
+            refined_disp = self.sigmoid(self.refine_block(self.disp))
             return {
                 'coarse_disp': disp,
                 'disp': refined_disp
