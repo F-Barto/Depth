@@ -111,7 +111,7 @@ def main(project_config, hparams, resume=False):
 
         checkpoint_callback = ModelCheckpoint(
             filepath=run_output_dir + '/{epoch:04d}-{val-rmse_log:.5f}', # saves a file like: my/path/epoch=2-abs_rel=0.0115.ckpt
-            save_top_k=3,
+            save_top_k=15,
             save_last=True,
             verbose=True,
             monitor='val-rmse_log',
