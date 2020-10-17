@@ -53,7 +53,7 @@ class SequentialKittiLoader(Dataset):
 
     def __init__(self, kitti_root_dir, split_file_path, gt_depth_root_dir=None, sparse_depth_root_dir=None,
                  data_transform=None, data_transform_options=None, source_views_indexes=[-1, 1], load_pose=False,
-                 eval_on_sparse=True, input_channels=3):
+                 eval_on_sparse=False, input_channels=3):
 
         """
         Parameters
