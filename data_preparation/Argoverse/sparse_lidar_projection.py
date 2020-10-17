@@ -147,7 +147,7 @@ def separate_pc(pc, tf_up, tf_down, th=1.0):
 
 
 def project_and_save(argoverse_tracking_root_dir, camera_list, output_base_dir, beams,
-                     separate_pc, sample_paths):
+                     pc_part_to_keep, sample_paths):
 
     relative_lidar_path = Path(sample_paths[0])
 
@@ -166,7 +166,7 @@ def project_and_save(argoverse_tracking_root_dir, camera_list, output_base_dir, 
 
     pc = load_ply_ring(str(lidar_filepath))
 
-    if separate_pc is not None:
+    if pc_part_to_keep is not None:
 
         tf_down_lidar_rot = Rotation.from_quat(calib_data['vehicle_SE3_down_lidar_']['rotation']['coefficients'])
         tf_down_lidar_tr = calib_data['vehicle_SE3_down_lidar_']['translation']
@@ -182,7 +182,7 @@ def project_and_save(argoverse_tracking_root_dir, camera_list, output_base_dir, 
 
         pc_up, pc_down = separate_pc(pc, tf_up_lidar, tf_down_lidar, th=1.0)
 
-        if separate_pc == 'up':
+        if pc_part_to_keep == 'up':
             pc = pc_up
             del pc_down
         else: # down
