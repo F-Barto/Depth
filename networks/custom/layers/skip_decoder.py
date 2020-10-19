@@ -95,8 +95,8 @@ class SkipDecoder(nn.Module):
 
         if self.refinement:
             self.refine_block = nn.Sequential(
-                Conv3x3Block(self.num_output_channels, 32, activation),
-                Conv3x3Block(32, 32, activation),
+                Conv3x3Block(self.num_output_channels + concat_chans_out, 64, activation),
+                Conv3x3Block(64, 32, activation),
                 Conv3x3(32, self.num_output_channels, activation)
         )
 
@@ -149,11 +149,13 @@ class SkipDecoder(nn.Module):
         disp = self.sigmoid(up_x)
         """
 
-        x = self.dispconv(x)
-        disp = self.sigmoid(x)
+        disp_x = self.dispconv(x)
+        disp = self.sigmoid(disp_x)
 
         if self.refinement:
-            refined_disp = self.sigmoid(self.refine_block(self.disp))
+            concat = [x, disp]
+            concat = torch.cat(concat, 1)
+            refined_disp = self.sigmoid(self.refine_block(concat))
             return {
                 'coarse_disp': disp,
                 'disp': refined_disp
