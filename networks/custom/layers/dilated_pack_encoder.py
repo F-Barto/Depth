@@ -65,8 +65,15 @@ class DilatedPackEncoder(nn.Module):
 
         layers = []
 
-        layers.append(block(self.inplanes, planes, activation, stride, groups=self.groups, base_width=self.base_width,
-                            norm_layer=norm_layer))
+        downsample = None
+        if self.inplanes != planes * block.expansion
+            downsample = nn.Sequential(
+                conv1x1(self.inplanes, planes * block.expansion, stride),
+                norm_layer(planes * block.expansion),
+            )
+
+        layers.append(block(self.inplanes, planes, activation, stride, downsample=downsample, groups=self.groups,
+                            base_width=self.base_width, norm_layer=norm_layer))
 
         if pack is not None:
             layers.append(pack)
