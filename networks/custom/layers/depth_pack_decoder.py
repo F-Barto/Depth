@@ -67,13 +67,9 @@ class DepthPackDecoder(nn.Module):
         x = self.convs["first_upconv"](x)
         x = self.convs["first_unpack"](x)
 
-        print('first_unpack:', x.shape)
-
         for i in range(1, -1, -1): # [1, 0]
 
             if self.concat_skips:
-                print(f'{i} cat x:', x.shape)
-                print(f'{i} cat input_features:', input_features[i].shape)
                 x = [x, input_features[i]]
                 x = torch.cat(x, 1)
             else:
