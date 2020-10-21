@@ -37,7 +37,7 @@ class DepthPackDecoder(nn.Module):
         self.convs["first_upconv"] = ConvBlock(self.num_ch_enc[-1], self.num_ch_dec[-1], activation)
         self.convs["first_unpack"] = UnpackLayerConv3d(self.num_ch_dec[-1], self.num_ch_dec[-2], 3, d=num_3d_feat)
 
-        for i in range(2, -1, -1):  # [1, 0]
+        for i in range(1, -1, -1):  # [1, 0]
             # upconv pre upsampling
             num_ch_in = self.num_ch_dec[i]
             num_ch_out = self.num_ch_enc[i]
@@ -69,7 +69,7 @@ class DepthPackDecoder(nn.Module):
 
         print('first_unpack:', x.shape)
 
-        for i in range(2, -1, -1): # [1, 0]
+        for i in range(1, -1, -1): # [1, 0]
 
             if self.concat_skips:
                 print(f'{i} cat x:', x.shape)
