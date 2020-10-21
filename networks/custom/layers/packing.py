@@ -19,6 +19,14 @@ class BlockConv(nn.Module):
 
         self.activation = activation_cls(inplace=True)
 
+    def forward(self, x):
+
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.activation(x)
+
+        return x
+
 def packing(x, r=2):
     """
     Takes a [B,C,H,W] tensor and returns a [B,(r^2)C,H/r,W/r] tensor, by concatenating
