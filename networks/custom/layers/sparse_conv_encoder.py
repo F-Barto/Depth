@@ -44,7 +44,7 @@ class SparseConv7x7(nn.Module):
         return x, m
 
 class SparseConvEncoder(nn.Module):
-    def __init__(self, nb_blocks, activation, input_channels=1, dilation_rates=None, **kwargs):
+    def __init__(self, nb_blocks, activation, input_channels=1, dilation_rates=None, small=False, **kwargs):
         super(SparseConvEncoder, self).__init__()
 
         if dilation_rates is not None:
@@ -61,17 +61,23 @@ class SparseConvEncoder(nn.Module):
 
         self.first_conv = SparseConv7x7(self.input_channels, self.inplanes, activation, stride=2, mask_pool=True)
 
+        self.small = small
+
         self.num_ch_enc = np.array([16, 16, 64])
+
+        if self.small:
+            self.num_ch_enc = np.array([16, 16, 32])
 
         ############### body ###############
         self.layer1 = self._make_layer(16, nb_blocks[0], activation, stride=2,
                                        dilation_rates=dilation_rates[0], **kwargs)
         self.layer2 = self._make_layer(32, nb_blocks[1], activation, stride=2,
                                        dilation_rates=dilation_rates[1], **kwargs)
-        self.layer3 = self._make_layer(64, nb_blocks[2], activation,
-                                       dilation_rates=dilation_rates[2], **kwargs)
-        self.layer4 = self._make_layer(64, nb_blocks[3], activation,
-                                       dilation_rates=dilation_rates[3], **kwargs)
+        if not self.small:
+            self.layer3 = self._make_layer(64, nb_blocks[2], activation,
+                                           dilation_rates=dilation_rates[2], **kwargs)
+            self.layer4 = self._make_layer(64, nb_blocks[3], activation,
+                                           dilation_rates=dilation_rates[3], **kwargs)
 
 
     def _make_layer(self, planes, blocks, activation, stride=1, dilation_rates=None, **kwargs):
@@ -104,7 +110,10 @@ class SparseConvEncoder(nn.Module):
         self.features.append(self.layer1(self.features[-1]))
 
         feature = self.layer2(self.features[-1])
-        feature = self.layer3(feature)
-        self.features.append(self.layer4(feature))
+        if not self.small:
+            feature = self.layer3(feature)
+            self.features.append(self.layer4(feature))
+        else:
+            self.features.append(feature)
 
         return self.features

@@ -3,6 +3,8 @@ import torch.nn as nn
 from functools import partial
 
 from networks.custom.layers.dilated_resnet import resnet18
+from networks.custom.layers.dilated_pack_encoder import resnet18 as pack_resnet18
+from networks.custom.layers.depth_pack_decoder import DepthPackDecoder
 from networks.custom.layers.sparse_conv_encoder import SparseConvEncoder, SparseConv1x1
 from networks.custom.layers.skip_decoder import SkipDecoder
 from networks.monodepth2.layers.common import disp_to_depth, get_activation
@@ -27,7 +29,7 @@ class GuidedSparseDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
-                 inverse_lidar_input=True, dilation_rates=None, combination='sum', **kwargs):
+                 inverse_lidar_input=True, dilation_rates=None, combination='sum', packing=False, **kwargs):
         super().__init__()
 
         assert guidance in ['attention', 'continuous']
@@ -36,8 +38,14 @@ class GuidedSparseDepthResNet(nn.Module):
 
         activation_cls = get_activation(activation)
 
+        self.packing = packing
+
         # keeping the name `encoder` so that we can use pre-trained weight directly
-        self.encoder = resnet18(activation_cls, input_channels=input_channels)
+        if self.packing:
+            self.encoder = pack_resnet18(activation_cls, input_channels=input_channels)
+        else:
+            self.encoder = resnet18(activation_cls, input_channels=input_channels)
+
         self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls,
                                                dilation_rates=dilation_rates, combination=combination)
 
@@ -66,7 +74,11 @@ class GuidedSparseDepthResNet(nn.Module):
             else:
                 print(f"guidance {guidance} not implemented")
 
-        self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        if self.packing:
+            self.decoder = DepthPackDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        else:
+            self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=120.0)
 
