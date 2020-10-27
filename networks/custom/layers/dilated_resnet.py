@@ -7,7 +7,7 @@ import numpy as np
 class DilatedResNetEncoder(nn.Module):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
-                 norm_layer=None, input_channels=3, **kwargs):
+                 norm_layer=None, input_channels=3, dilation=True, **kwargs):
         super(DilatedResNetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 512])
@@ -28,11 +28,13 @@ class DilatedResNetEncoder(nn.Module):
 
         self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
+        dilations =  [2,4] if dilation else [1,1]
+
         ############### body ###############
         self.layer1 = self._make_layer(block, 64, layers[0], activation, **kwargs)
         self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2, **kwargs)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=2, **kwargs)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=4, **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=dilations[0], **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=dilations[1], **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

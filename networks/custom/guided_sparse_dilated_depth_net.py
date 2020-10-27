@@ -27,7 +27,8 @@ class GuidedSparseDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
-                 inverse_lidar_input=True, dilation_rates=None, combination='sum', **kwargs):
+                 inverse_lidar_input=True, dilation_rates=None, combination='sum', fusion_batch_norm=True,
+                 rgb_dilation=True, **kwargs):
         super().__init__()
 
         assert guidance in ['attention', 'continuous']
@@ -37,7 +38,7 @@ class GuidedSparseDepthResNet(nn.Module):
         activation_cls = get_activation(activation)
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
-        self.encoder = resnet18(activation_cls, input_channels=input_channels)
+        self.encoder = resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation)
         self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls,
                                                dilation_rates=dilation_rates, combination=combination)
 
@@ -62,7 +63,9 @@ class GuidedSparseDepthResNet(nn.Module):
             num_ch =  self.num_ch_enc[i]
 
             if guidance == 'attention':
-                self.guidances.update({f"guidance_{i}": AttentionGuidance(num_ch, activation_cls, attention_scheme)})
+                guidance_module = AttentionGuidance(num_ch, activation_cls, attention_scheme, 
+                                                    use_batch_norm=fusion_batch_norm)
+                self.guidances.update({f"guidance_{i}": guidance_module})
             else:
                 print(f"guidance {guidance} not implemented")
 
