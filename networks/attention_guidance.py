@@ -107,8 +107,9 @@ class AttentionGuidance(nn.Module):
             weights = self.softmax(concat_attentive_masks)
 
             if lidar_mask is not None:
-                weights[0][lidar_mask > 0.] = 1. # image weights
-                weights[1][lidar_mask <= 0.] = 0.    # lidar weights
+                image_weights = weights[0] * lidar_mask + (1. - lidar_mask)
+                lidar_weights = weights[1] * lidar_mask
+                weights = torch.stack([image_weights, lidar_weights], dim=0)
 
             features = [of * w for of, w in zip(original_features, weights)]
             return sum(features)
