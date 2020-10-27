@@ -93,7 +93,7 @@ class AttentionGuidance(nn.Module):
             self.softmax = torch.nn.Softmax(dim=0)
 
 
-    def fuse_features(self, original_features, attentive_masks):
+    def fuse_features(self, original_features, attentive_masks, lidar_mask=None):
         if 'res' in self.attention_scheme:
             residual_features = [of * am + of for of,am in zip(original_features, attentive_masks)]
             return sum(residual_features)
@@ -105,6 +105,11 @@ class AttentionGuidance(nn.Module):
 
             concat_attentive_masks = torch.stack(attentive_masks, dim=0)
             weights = self.softmax(concat_attentive_masks)
+
+            if lidar_mask is not None:
+                weights[0][lidar_mask <= 0.] = 0.
+                weights[1][lidar_mask > 0.] = 1.
+
             features = [of * w for of, w in zip(original_features, weights)]
             return sum(features)
         elif 'mult' in self.attention_scheme:
@@ -114,6 +119,12 @@ class AttentionGuidance(nn.Module):
             raise ValueError(f'Attention scheme invalid either res or mult: {self.attention_scheme}')
 
     def forward(self, image_features, lidar_features, **kwargs):
+
+        lidar_mask=None
+        if isinstance(lidar_features, tuple):
+            lidar_features, lidar_mask = lidar_features
+            if not 'masked' in self.attention_scheme:
+                lidar_mask = None
 
         if 'preconv' in self.attention_scheme:
             lidar_features = self.preconv_lidar(lidar_features)
@@ -134,7 +145,7 @@ class AttentionGuidance(nn.Module):
             image_attentive_mask = self.image_attention_block(c)
             lidar_attentive_mask = self.lidar_attention_block(c)
             attentive_masks = [image_attentive_mask, lidar_attentive_mask]
-            final_features = self.fuse_features([image_features, lidar_features], attentive_masks)
+            final_features = self.fuse_features([image_features, lidar_features], attentive_masks, lidar_mask)
 
         return final_features
 

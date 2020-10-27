@@ -86,7 +86,7 @@ class GuidedSparseDepthResNet(nn.Module):
         cam_features = self.encoder(cam_input)
         lidar_features = self.lidar_encoder(lidar_input)
 
-        extended_lidar_features = [self.extend_lidar[f"extend_lidar{i}"](lidar_features[i])[0]
+        extended_lidar_features = [self.extend_lidar[f"extend_lidar{i}"](lidar_features[i])
                                    for i in range(nb_features)]
         lidar_features = extended_lidar_features
 
