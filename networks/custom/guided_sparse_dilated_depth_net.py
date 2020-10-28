@@ -29,6 +29,8 @@ class GuidedSparseDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
+                 inverse_lidar_input=True, dilation_rates=None, combination='sum', fusion_batch_norm=True,
+                 rgb_dilation=True, rgb_no_maxpool=False, **kwargs):
                  inverse_lidar_input=True, dilation_rates=None, combination='sum', packing=False, **kwargs):
         super().__init__()
 
@@ -41,6 +43,8 @@ class GuidedSparseDepthResNet(nn.Module):
         self.packing = packing
 
         # keeping the name `encoder` so that we can use pre-trained weight directly
+        self.encoder = resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation,
+                                no_maxpool=rgb_no_maxpool)
         if self.packing:
             self.encoder = pack_resnet18(activation_cls, input_channels=input_channels)
         else:
@@ -70,7 +74,9 @@ class GuidedSparseDepthResNet(nn.Module):
             num_ch =  self.num_ch_enc[i]
 
             if guidance == 'attention':
-                self.guidances.update({f"guidance_{i}": AttentionGuidance(num_ch, activation_cls, attention_scheme)})
+                guidance_module = AttentionGuidance(num_ch, activation_cls, attention_scheme, 
+                                                    use_batch_norm=fusion_batch_norm)
+                self.guidances.update({f"guidance_{i}": guidance_module})
             else:
                 print(f"guidance {guidance} not implemented")
 
@@ -95,7 +101,7 @@ class GuidedSparseDepthResNet(nn.Module):
         cam_features = self.encoder(cam_input)
         lidar_features = self.lidar_encoder(lidar_input)
 
-        extended_lidar_features = [self.extend_lidar[f"extend_lidar{i}"](lidar_features[i])[0]
+        extended_lidar_features = [self.extend_lidar[f"extend_lidar{i}"](lidar_features[i])
                                    for i in range(nb_features)]
         lidar_features = extended_lidar_features
 

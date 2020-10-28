@@ -3,7 +3,7 @@ import torch
 
 
 class AttentionBlock(nn.Module):
-    def __init__(self, inplanes, activation_cls, attention_scheme='res-sig',):
+    def __init__(self, inplanes, activation_cls, attention_scheme='res-sig', use_batch_norm=True):
         super().__init__()
 
         self.activation = activation_cls(inplace=True)
@@ -25,9 +25,14 @@ class AttentionBlock(nn.Module):
 
 
         self.conv_1x1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
         self.conv_3x3 = nn.Conv2d(planes, planes, kernel_size=3, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
+
+        self.use_batch_norm = use_batch_norm
+
+        if self.use_batch_norm:
+            self.bn1 = nn.BatchNorm2d(planes)
+            self.bn2 = nn.BatchNorm2d(planes)
+
 
         nn.init.kaiming_normal_(self.conv_1x1.weight, mode='fan_out', nonlinearity='relu')
         nn.init.xavier_normal_(self.conv_3x3.weight, gain=1.0)
@@ -39,18 +44,20 @@ class AttentionBlock(nn.Module):
 
     def forward(self, x):
         x = self.conv_1x1(x)
-        x = self.bn1(x)
+        if self.use_batch_norm:
+            x = self.bn1(x)
         x = self.activation(x)
 
         x = self.conv_3x3(x)
-        x = self.bn2(x)
+        if self.use_batch_norm:
+            x = self.bn2(x)
 
         out = self.act(x)
 
         return out
 
 class AttentionGuidance(nn.Module):
-    def __init__(self, inplanes, activation_cls, attention_scheme='res-sig'):
+    def __init__(self, inplanes, activation_cls, attention_scheme='res-sig', use_batch_norm=True):
         super().__init__()
 
         self.attention_scheme = attention_scheme
@@ -64,8 +71,10 @@ class AttentionGuidance(nn.Module):
 
             self.attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme)
         else:
-            self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme)
-            self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme)
+            self.lidar_attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme,
+                                                        use_batch_norm=use_batch_norm)
+            self.image_attention_block = AttentionBlock(inplanes * 2, activation_cls, self.attention_scheme,
+                                                        use_batch_norm=use_batch_norm)
 
         if 'preconv' in self.attention_scheme:
             self.preconv_lidar = nn.Sequential(
@@ -84,18 +93,24 @@ class AttentionGuidance(nn.Module):
             self.softmax = torch.nn.Softmax(dim=0)
 
 
-    def fuse_features(self, original_features, attentive_masks):
+    def fuse_features(self, original_features, attentive_masks, lidar_mask=None):
         if 'res' in self.attention_scheme:
             residual_features = [of * am + of for of,am in zip(original_features, attentive_masks)]
             return sum(residual_features)
         elif 'softmax' in self.attention_scheme:
 
             if 'gsoftmax' in self.attention_scheme:
-                # reduce to BxCx1x1 through global average pooling
-                attentive_masks = [am.mean([2, 3], keepdim=True) for am in attentive_masks]
+                # reduce to Bx1xHxW through global average pooling
+                attentive_masks = [am.mean([1], keepdim=True) for am in attentive_masks]
 
             concat_attentive_masks = torch.stack(attentive_masks, dim=0)
             weights = self.softmax(concat_attentive_masks)
+
+            if lidar_mask is not None:
+                image_weights = weights[0] * lidar_mask + (1. - lidar_mask)
+                lidar_weights = weights[1] * lidar_mask
+                weights = torch.stack([image_weights, lidar_weights], dim=0)
+
             features = [of * w for of, w in zip(original_features, weights)]
             return sum(features)
         elif 'mult' in self.attention_scheme:
@@ -105,6 +120,12 @@ class AttentionGuidance(nn.Module):
             raise ValueError(f'Attention scheme invalid either res or mult: {self.attention_scheme}')
 
     def forward(self, image_features, lidar_features, **kwargs):
+
+        lidar_mask=None
+        if isinstance(lidar_features, tuple):
+            lidar_features, lidar_mask = lidar_features
+            if not 'masked' in self.attention_scheme:
+                lidar_mask = None
 
         if 'preconv' in self.attention_scheme:
             lidar_features = self.preconv_lidar(lidar_features)
@@ -125,7 +146,7 @@ class AttentionGuidance(nn.Module):
             image_attentive_mask = self.image_attention_block(c)
             lidar_attentive_mask = self.lidar_attention_block(c)
             attentive_masks = [image_attentive_mask, lidar_attentive_mask]
-            final_features = self.fuse_features([image_features, lidar_features], attentive_masks)
+            final_features = self.fuse_features([image_features, lidar_features], attentive_masks, lidar_mask)
 
         return final_features
 

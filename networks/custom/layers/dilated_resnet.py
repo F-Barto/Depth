@@ -7,7 +7,7 @@ import numpy as np
 class DilatedResNetEncoder(nn.Module):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
-                 norm_layer=None, input_channels=3, **kwargs):
+                 norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, **kwargs):
         super(DilatedResNetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 512])
@@ -15,6 +15,8 @@ class DilatedResNetEncoder(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
+
+        self.no_maxpool = no_maxpool
 
         self.inplanes = 64
 
@@ -26,13 +28,19 @@ class DilatedResNetEncoder(nn.Module):
         self.bn1 = norm_layer(self.inplanes)
         self.activation = activation(inplace=True)
 
-        self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        if not self.no_maxpool:
+            self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+            stride = 1
+        else:
+            stride = 2
+
+        dilations =  [2,4] if dilation else [1,1]
 
         ############### body ###############
-        self.layer1 = self._make_layer(block, 64, layers[0], activation, **kwargs)
+        self.layer1 = self._make_layer(block, 64, layers[0], activation, stride=stride, **kwargs)
         self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2, **kwargs)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=2, **kwargs)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=4, **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=dilations[0], **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=dilations[1], **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -80,7 +88,12 @@ class DilatedResNetEncoder(nn.Module):
         x = self.bn1(x)
         self.features.append(self.activation(x))
 
-        self.features.append(self.layer1(self.pooling(self.features[-1])))
+        if not self.no_maxpool:
+            x = self.pooling(self.features[-1])
+        else:
+            x = self.features[-1]
+
+        self.features.append(self.layer1(x))
 
         feature = self.layer2(self.features[-1])
         feature = self.layer3(feature)
