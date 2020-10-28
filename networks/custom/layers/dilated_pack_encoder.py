@@ -9,7 +9,7 @@ from .packing import PackLayerConv3d, UnpackLayerConv3d
 class DilatedPackEncoder(nn.Module):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
-                 norm_layer=None, input_channels=3, **kwargs):
+                 norm_layer=None, input_channels=3, dilation=True, **kwargs):
         super(DilatedPackEncoder, self).__init__()
 
         self.num_ch_enc = np.array([32, 64, 512])
@@ -32,6 +32,8 @@ class DilatedPackEncoder(nn.Module):
         pack_kernel = [5,3,3]
         num_3d_feat = 4
 
+        dilations = [2, 4] if dilation else [1, 1]
+
         self.pack1 = PackLayerConv3d(32, pack_kernel[0], d=num_3d_feat)
         self.pack2 = PackLayerConv3d(64, pack_kernel[1], d=num_3d_feat)
         self.pack3 = PackLayerConv3d(128, pack_kernel[2], d=num_3d_feat)
@@ -39,8 +41,8 @@ class DilatedPackEncoder(nn.Module):
         ############### body ###############
         self.layer1 = self._make_layer(block, 64, layers[0], activation, pack=self.pack2, **kwargs)
         self.layer2 = self._make_layer(block, 128, layers[1], activation, pack=self.pack3, **kwargs)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=2, **kwargs)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=4, **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=dilations[0], **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=dilations[1], **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
