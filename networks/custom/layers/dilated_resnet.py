@@ -12,6 +12,8 @@ class DilatedResNetEncoder(nn.Module):
                  norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, strided=False, **kwargs):
         super(DilatedResNetEncoder, self).__init__()
 
+        self.strided = strided
+
         self.num_ch_enc = np.array([64, 64, 128]) if self.strided else np.array([64, 64, 512])
 
         if norm_layer is None:
@@ -19,7 +21,7 @@ class DilatedResNetEncoder(nn.Module):
         self._norm_layer = norm_layer
 
         self.no_maxpool = no_maxpool
-        self.strided = strided
+
 
         self.inplanes = 64
 
