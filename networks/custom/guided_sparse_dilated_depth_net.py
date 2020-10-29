@@ -30,7 +30,7 @@ class GuidedSparseDepthResNet(nn.Module):
     """
     def __init__(self, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
                  inverse_lidar_input=True, dilation_rates=None, combination='sum', fusion_batch_norm=True,
-                 rgb_dilation=True, rgb_no_maxpool=False, rgb_strided=False, packing=False, **kwargs):
+                 rgb_dilation=True, rgb_no_maxpool=False, lidar_small=False, rgb_strided=False, packing=False, **kwargs):
         super().__init__()
 
         assert guidance in ['attention', 'continuous']
@@ -47,7 +47,7 @@ class GuidedSparseDepthResNet(nn.Module):
             self.encoder = resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation,
                                     no_maxpool=rgb_no_maxpool, strided=rgb_strided)
 
-        self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls,
+        self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls, small=lidar_small,
                                                dilation_rates=dilation_rates, combination=combination)
 
         self.num_ch_enc = self.encoder.num_ch_enc
