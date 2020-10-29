@@ -1,13 +1,15 @@
 from torch import nn
 from networks.resnet.blocks import conv1x1, conv7x7, BasicBlock, Bottleneck
 import numpy as np
+import torch.nn.functional as F
+import torch
 
 # Inspired by PSPNet
 
 class DilatedResNetEncoder(nn.Module):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
-                 norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, **kwargs):
+                 norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, strided=False, **kwargs):
         super(DilatedResNetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 512])
@@ -17,6 +19,7 @@ class DilatedResNetEncoder(nn.Module):
         self._norm_layer = norm_layer
 
         self.no_maxpool = no_maxpool
+        self.strided = strided
 
         self.inplanes = 64
 
@@ -34,13 +37,23 @@ class DilatedResNetEncoder(nn.Module):
         else:
             stride = 2
 
+        if self.strided:
+            self.up_last_group = nn.Sequential(
+                nn.Conv2d(640, 128, kernel_size=3, padding=1, stride=1, bias=True),
+                activation(inplace=True)
+            )
+
+        strides = [2,2] if self.strided else [1,1]
+
         dilations =  [2,4] if dilation else [1,1]
 
         ############### body ###############
         self.layer1 = self._make_layer(block, 64, layers[0], activation, stride=stride, **kwargs)
         self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2, **kwargs)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=dilations[0], **kwargs)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=dilations[1], **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=strides[0],
+                                       dilation=dilations[0], **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=strides[1],
+                                       dilation=dilations[1], **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -95,9 +108,21 @@ class DilatedResNetEncoder(nn.Module):
 
         self.features.append(self.layer1(x))
 
-        feature = self.layer2(self.features[-1])
-        feature = self.layer3(feature)
-        self.features.append(self.layer4(feature))
+        if self.strided:
+            x_1_8 = self.layer2(self.features[-1])
+            x_1_32 = self.layer4(self.layer3(x_1_8))
+            upped_x_1_32 = F.interpolate(x_1_32, scale_factor=2, mode="nearest")
+
+            concat = [x_1_8, upped_x_1_32]
+            concat = torch.cat(concat, 1)
+
+            feature = self.up_last_group(concat)
+
+            self.features.append(feature)
+        else:
+            feature = self.layer2(self.features[-1])
+            feature = self.layer3(feature)
+            self.features.append(self.layer4(feature))
 
         return self.features
 
