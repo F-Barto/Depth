@@ -113,7 +113,7 @@ class DilatedResNetEncoder(nn.Module):
         if self.strided:
             x_1_8 = self.layer2(self.features[-1])
             x_1_32 = self.layer4(self.layer3(x_1_8))
-            upped_x_1_32 = F.interpolate(x_1_32, scale_factor=2, mode="nearest")
+            upped_x_1_32 = F.interpolate(x_1_32, scale_factor=4, mode="nearest")
 
             concat = [x_1_8, upped_x_1_32]
             concat = torch.cat(concat, 1)
