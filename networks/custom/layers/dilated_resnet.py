@@ -12,7 +12,7 @@ class DilatedResNetEncoder(nn.Module):
                  norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, strided=False, **kwargs):
         super(DilatedResNetEncoder, self).__init__()
 
-        self.num_ch_enc = np.array([64, 64, 512])
+        self.num_ch_enc = np.array([64, 64, 128]) if self.strided else np.array([64, 64, 512])
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
