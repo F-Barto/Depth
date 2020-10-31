@@ -51,6 +51,8 @@ class DepthPackDecoder(nn.Module):
             num_ch_out = self.num_ch_dec[i - 1] if i != 0 else self.num_ch_dec[i]
             self.convs[f"unpack_{i}"] = UnpackLayerConv3d(num_ch_in, num_ch_out, 3, d=num_3d_feat)
 
+        self.convs["last_conv"] = ConvBlock(self.num_ch_dec[0], self.num_ch_dec[0], activation)
+
         self.convs["dispconv"] = Conv3x3(self.num_ch_dec[0], self.num_output_channels)
         if self.uncertainty:
             self.convs["uncertaintyconv"] = Conv3x3(self.num_ch_dec[0], self.num_output_channels)
@@ -77,6 +79,8 @@ class DepthPackDecoder(nn.Module):
 
             x = self.convs[f"upconv_{i}"](x)
             x = self.convs[f"unpack_{i}"](x)
+
+        x = self.convs["last_conv"]
 
         self.outputs["disp"] = self.sigmoid(self.convs["dispconv"](x))
 

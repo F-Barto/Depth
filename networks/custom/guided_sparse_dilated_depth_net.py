@@ -2,6 +2,7 @@ import torch.nn as nn
 
 from functools import partial
 
+from networks.custom.layers.multi_scale_depth_decoder import MultiScaleDepthDecoder
 from networks.custom.layers.dilated_resnet import resnet18
 from networks.custom.layers.dilated_pack_encoder import resnet18 as pack_resnet18
 from networks.custom.layers.depth_pack_decoder import DepthPackDecoder
@@ -30,7 +31,8 @@ class GuidedSparseDepthResNet(nn.Module):
     """
     def __init__(self, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
                  inverse_lidar_input=True, dilation_rates=None, combination='sum', fusion_batch_norm=True,
-                 rgb_dilation=True, rgb_no_maxpool=False, lidar_small=False, rgb_strided=False, packing=False, **kwargs):
+                 rgb_dilation=True, rgb_no_maxpool=False, lidar_small=False, rgb_strided=False, packing=False,
+                 multi_scale=False, **kwargs):
         super().__init__()
 
         assert guidance in ['attention', 'continuous']
@@ -39,6 +41,7 @@ class GuidedSparseDepthResNet(nn.Module):
 
         activation_cls = get_activation(activation)
 
+        self.multi_scale = multi_scale
         self.packing = packing
 
         if self.packing:
@@ -79,6 +82,8 @@ class GuidedSparseDepthResNet(nn.Module):
 
         if self.packing:
             self.decoder = DepthPackDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        elif self.multi_scale:
+            self.decoder = MultiScaleDepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
         else:
             self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
 
@@ -107,8 +112,25 @@ class GuidedSparseDepthResNet(nn.Module):
             guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i])
             self.guided_features.append(guided_feature)
 
-        outputs = self.decoder(self.guided_features)
+        preds = self.decoder(self.guided_features)
 
-        outputs = {k: self.scale_inv_depth(v)[0] for k,v in outputs.items()}
+        outputs = {}
+
+        if not self.multi_scale:
+            outputs['disp'] = self.scale_inv_depth(preds['disp'] )[0]
+            if 'uncertainty' in preds:
+                outputs['uncertainty'] = preds['uncertainty']
+
+        else:
+            disps = [preds[('disp', i)] for i in range(4)]
+            uncertainties = [preds[('uncertainty', i)] for i in range(4) if ('uncertainty', i) in preds]
+
+            if self.training:
+                outputs['inv_depths'] = [self.scale_inv_depth(d)[0] for d in disps]
+                if len(uncertainties)>0:
+                    outputs['uncertainties'] = uncertainties
+            else:
+                outputs['inv_depths'] = self.scale_inv_depth(disps[0])[0]
+                outputs['uncertainties'] = uncertainties[0]
 
         return outputs
