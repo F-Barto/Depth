@@ -86,7 +86,7 @@ class MultiScaleDepthDecoder(nn.Module):
 
             x = nearest_upsample(x)
 
-        x = self.convs["last_conv"]
+        x = self.convs["last_conv"](x)
 
         i = 0
         self.outputs[("disp", i)] = self.sigmoid(self.convs[("dispconv", i)](x))
