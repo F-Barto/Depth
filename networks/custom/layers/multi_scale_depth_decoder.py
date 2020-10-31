@@ -72,10 +72,10 @@ class MultiScaleDepthDecoder(nn.Module):
         for i in range(2, 0, -1):  # [2, 1]
 
             if self.concat_skips:
-                x = [x, input_features[i]]
+                x = [x, input_features[i-1]] # i: [1, 0]
                 x = torch.cat(x, 1)
             else:
-                x = x + input_features[i]
+                x = x + input_features[i-1]
 
             x = self.convs[f"upconv_{i}"](x)
 
