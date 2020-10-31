@@ -131,6 +131,7 @@ class GuidedSparseDepthResNet(nn.Module):
                     outputs['uncertainties'] = uncertainties
             else:
                 outputs['inv_depths'] = self.scale_inv_depth(disps[0])[0]
-                outputs['uncertainties'] = uncertainties[0]
+                if len(uncertainties) > 0:
+                    outputs['uncertainties'] = uncertainties[0]
 
         return outputs
