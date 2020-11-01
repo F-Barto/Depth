@@ -146,12 +146,15 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         ################### Losses Definition #####################
 
+        self.multi_scale_pred = True
+        if hasattr(self.depth_net, 'multi_scale'):
+            self.multi_scale_pred =  self.depth_net.multi_scale
 
         self.hinted_supervision = False
         if self.hparams.losses.get('HintedMultiViewPhotometricLoss', None) is not None:
             self.hinted_supervision = True
 
-            if not self.hparams.model.depth_net.options.multi_scale:
+            if not self.multi_scale_pred:
                 self.hparams.losses.HintedMultiViewPhotometricLoss.supervised_num_scales = 1
                 self.hparams.losses.HintedMultiViewPhotometricLoss.num_scales = 1
 
@@ -159,7 +162,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         else:
 
-            if not self.hparams.model.depth_net.options.multi_scale:
+            if not self.multi_scale_pred:
                 self.hparams.losses.MultiViewPhotometricLoss.num_scales = 1
 
             # Photometric loss used as main supervisory signal
@@ -328,7 +331,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         # Get predicted depth
         output = self(batch)
 
-        output_key = 'disp' if not self.hparams.model.depth_net.options.multi_scale else 'inv_depths'
+        output_key = 'disp' if not self.multi_scale_pred else 'inv_depths'
 
         inv_depth = output[output_key][0]
         depth = inv2depth(inv_depth)
@@ -398,7 +401,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         else:
             progress = self.current_epoch / self.hparams.trainer.max_epochs
 
-            if not self.hparams.model.depth_net.options.multi_scale :
+            if not self.multi_scale_pred:
 
                 losses, metrics = self.compute_common_losses_and_metrics(batch, preds['disp'], poses, progress)
 
