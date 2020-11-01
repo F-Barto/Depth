@@ -32,7 +32,7 @@ class GuidedSparseDepthResNet(nn.Module):
     def __init__(self, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
                  inverse_lidar_input=True, dilation_rates=None, combination='sum', fusion_batch_norm=True,
                  rgb_dilation=True, rgb_no_maxpool=False, lidar_small=False, rgb_strided=False, packing=False,
-                 multi_scale=False, **kwargs):
+                 multi_scale=False, decoder='skip', **kwargs):
         super().__init__()
 
         assert guidance in ['attention', 'continuous']
@@ -80,9 +80,13 @@ class GuidedSparseDepthResNet(nn.Module):
             else:
                 print(f"guidance {guidance} not implemented")
 
-        if self.packing:
+        self.decoder_type = decoder
+
+        assert self.decoder_type in ['skip', 'packing', 'iterative']
+
+        if self.packing or self.decoder_type == 'packing':
             self.decoder = DepthPackDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
-        elif self.multi_scale:
+        elif self.multi_scale and 'iterative':
             self.decoder = MultiScaleDepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
         else:
             self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
