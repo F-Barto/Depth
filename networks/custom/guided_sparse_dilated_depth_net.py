@@ -123,7 +123,8 @@ class GuidedSparseDepthResNet(nn.Module):
         if not self.multi_scale:
             keys = ['disp', 'coarse_disp']
             for key in keys:
-                outputs[key] = self.scale_inv_depth(preds[key])[0]
+                if key in preds:
+                    outputs[key] = self.scale_inv_depth(preds[key])[0]
             if 'uncertainty' in preds:
                 outputs['uncertainty'] = preds['uncertainty']
 
