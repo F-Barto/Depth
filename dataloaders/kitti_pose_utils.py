@@ -282,6 +282,8 @@ class KITTIRawOxts():
 
     def _get_pose(self, image_file):
         """Gets the pose information from an image file."""
+        image_file = str(image_file)
+
         if image_file in self.pose_cache:
             return self.pose_cache[image_file]
         # Find origin frame in this sequence to determine scale & origin translation
