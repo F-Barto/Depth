@@ -10,6 +10,7 @@ and https://github.com/TRI-ML/packnet-sfm/blob/master/packnet_sfm/datasets/kitti
 from collections import namedtuple
 
 import numpy as np
+import os
 
 __author__ = "Lee Clement"
 __email__ = "lee.clement@robotics.utias.utoronto.ca"
