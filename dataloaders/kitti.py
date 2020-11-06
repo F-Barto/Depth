@@ -23,6 +23,7 @@ from pathlib import Path
 
 from torch.utils.data import Dataset
 from pytorch_lightning import _logger as terminal_logger
+from dataloaders.kitti_pose_utils import KITTIRawOxts
 
 
 KITTI_RAW_LEFT_STEREO_IMAGE_DIR = 'image_02/data'
@@ -129,6 +130,8 @@ class SequentialKittiLoader(Dataset):
 
         self.kitti_root_dir = Path(kitti_root_dir).expanduser()
         self.load_pose = load_pose
+        if self.load_pose:
+            self.oxts_reader = KITTIRawOxts()
 
         self.intrinsics = self.get_intrinsics_for_all_sequences(split_file_path)
         img_paths = self.load_absolute_paths_from_split_file(split_file_path)
@@ -451,6 +454,10 @@ class SequentialKittiLoader(Dataset):
             if self.input_channels == 'gray':
                 source_views_imgs = [source_views_img.convert('L') for source_views_img in source_views_imgs]
             sample['source_views'] = source_views_imgs
+
+        if self.load_pose:
+            sample['translation_magnitudes'] = \
+                self.oxts_reader.get_magnitude_between_pairs(img_path, source_views_paths)
 
         # e.g., img_path == path_to_dataset_root_dir/2011_09_26/2011_09_26_drive_0048_sync/image_02/data/0000000085.png
         capture_date = Path(img_path).parents[3].name # 2011_09_26

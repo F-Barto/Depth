@@ -1,4 +1,11 @@
-"""Provides helper methods for loading and parsing KITTI data."""
+"""Provides helper methods for loading and parsing KITTI data.
+
+adapted from https://github.com/TRI-ML/packnet-sfm/blob/master/packnet_sfm/datasets/kitti_dataset.py
+and https://github.com/TRI-ML/packnet-sfm/blob/master/packnet_sfm/datasets/kitti_dataset_utils.py#L138
+"""
+
+
+
 
 from collections import namedtuple
 
@@ -20,6 +27,19 @@ OxtsPacket = namedtuple('OxtsPacket',
 
 # Bundle into an easy-to-access structure
 OxtsData = namedtuple('OxtsData', 'packet, T_w_imu')
+
+CALIB_FILE = {
+    'cam2cam': 'calib_cam_to_cam.txt',
+    'velo2cam': 'calib_velo_to_cam.txt',
+    'imu2velo': 'calib_imu_to_velo.txt',
+}
+
+IMAGE_FOLDER = {
+    'left': 'image_02',
+    'right': 'image_03',
+}
+
+OXTS_POSE_DATA = 'oxts'
 
 
 def rotx(t):
