@@ -205,3 +205,103 @@ def load_oxts_packets_and_poses(oxts_files):
                 oxts.append(OxtsData(packet, T_w_imu))
 
     return oxts
+
+
+class KITTIRawOxts():
+
+    def __init__(self):
+        self.pose_cache = {}
+        self.oxts_cache = {}
+        self.calibration_cache = {}
+        self.imu2velo_calib_cache = {}
+
+    @staticmethod
+    def _get_parent_folder(image_file):
+        """Get the parent folder from image_file."""
+        return os.path.abspath(os.path.join(image_file, "../../../.."))
+
+    def _get_imu2cam_transform(self, image_file):
+        """Gets the transformation between IMU an camera from an image file"""
+        parent_folder = self._get_parent_folder(image_file)
+        if image_file in self.imu2velo_calib_cache:
+            return self.imu2velo_calib_cache[image_file]
+
+        cam2cam = read_calib_file(os.path.join(parent_folder, CALIB_FILE['cam2cam']))
+        imu2velo = read_calib_file(os.path.join(parent_folder, CALIB_FILE['imu2velo']))
+        velo2cam = read_calib_file(os.path.join(parent_folder, CALIB_FILE['velo2cam']))
+
+        velo2cam_mat = transform_from_rot_trans(velo2cam['R'], velo2cam['T'])
+        imu2velo_mat = transform_from_rot_trans(imu2velo['R'], imu2velo['T'])
+        cam_2rect_mat = transform_from_rot_trans(cam2cam['R_rect_00'], np.zeros(3))
+
+        imu2cam = cam_2rect_mat @ velo2cam_mat @ imu2velo_mat
+        self.imu2velo_calib_cache[image_file] = imu2cam
+        return imu2cam
+
+    @staticmethod
+    def _get_oxts_file(image_file):
+        """Gets the oxts file from an image file."""
+        # find oxts pose file
+        for cam in ['left', 'right']:
+            # Check for both cameras, if found replace and return file name
+            if IMAGE_FOLDER[cam] in image_file:
+                return image_file.replace(IMAGE_FOLDER[cam], OXTS_POSE_DATA).replace('.png', '.txt')
+        # Something went wrong (invalid image file)
+        raise ValueError('Invalid KITTI path for pose supervision.')
+
+    def _get_oxts_data(self, image_file):
+        """Gets the oxts data from an image file."""
+        oxts_file = self._get_oxts_file(image_file)
+        if oxts_file in self.oxts_cache:
+            oxts_data = self.oxts_cache[oxts_file]
+        else:
+            oxts_data = np.loadtxt(oxts_file, delimiter=' ', skiprows=0)
+            self.oxts_cache[oxts_file] = oxts_data
+        return oxts_data
+
+    def _get_pose(self, image_file):
+        """Gets the pose information from an image file."""
+        if image_file in self.pose_cache:
+            return self.pose_cache[image_file]
+        # Find origin frame in this sequence to determine scale & origin translation
+        base, ext = os.path.splitext(os.path.basename(image_file))
+        origin_frame = os.path.join(os.path.dirname(image_file), str(0).zfill(len(base)) + ext)
+        # Get origin data
+        origin_oxts_data = self._get_oxts_data(origin_frame)
+        lat = origin_oxts_data[0]
+        scale = np.cos(lat * np.pi / 180.)
+        # Get origin pose
+        origin_R, origin_t = pose_from_oxts_packet(origin_oxts_data, scale)
+        origin_pose = transform_from_rot_trans(origin_R, origin_t)
+        # Compute current pose
+        oxts_data = self._get_oxts_data(image_file)
+        R, t = pose_from_oxts_packet(oxts_data, scale)
+        pose = transform_from_rot_trans(R, t)
+        # Compute odometry pose
+        imu2cam = self._get_imu2cam_transform(image_file)
+        odo_pose = (imu2cam @ np.linalg.inv(origin_pose) @
+                    pose @ np.linalg.inv(imu2cam)).astype(np.float32)
+        # Cache and return pose
+        self.pose_cache[image_file] = odo_pose
+        return odo_pose
+
+    def get_pose_from_path(self, file_path):
+        return self._get_pose(file_path)
+
+    @staticmethod
+    def invert_pose_numpy(T):
+        """Inverts a [4,4] np.array pose"""
+        Tinv = np.copy(T)
+        R, t = Tinv[:3, :3], Tinv[:3, 3]
+        Tinv[:3, :3], Tinv[:3, 3] = R.T, - np.matmul(R.T, t)
+        return Tinv
+
+    def get_magnitude_between_pairs(self, target_file_path, source_file_paths):
+        target_pose = self._get_pose(target_file_path)
+        source_poses = [self._get_pose(source_file_path) for source_file_path in source_file_paths]
+
+        # computes the "relative" transformation between the sources and target poses
+        relatives_transformations = [self.invert_pose_numpy(source_pose) @ target_pose for source_pose in source_poses]
+        magnitudes = [np.linalg.norm(rel_t[:3, 3]) for rel_t in relatives_transformations]
+
+        return magnitudes
