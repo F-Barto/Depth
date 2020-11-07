@@ -7,6 +7,7 @@ from utils.depth import inv2depth
 
 from losses.supervised_loss import ReprojectedLoss, SupervisedLoss
 from losses.multiview_photometric_loss import MultiViewPhotometricLoss
+from losses.global_scaling import GlobalScalingLoss
 
 class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
 
@@ -19,8 +20,16 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
         Extra parameters
     """
 
-    def __init__(self, supervised_method='reprojected', hinted_loss_weight=1.0, supervised_num_scales=4, **kwargs):
+    def __init__(self, supervised_method='reprojected', hinted_loss_weight=1.0, supervised_num_scales=4,
+                 global_scaling=False, **kwargs):
         super().__init__(**kwargs)
+
+        self.global_scaling = global_scaling
+
+        if self.global_scaling:
+            self._global_scaling_loss = GlobalScalingLoss(supervised_num_scales)
+
+
 
         self.hinted_loss_weight = hinted_loss_weight
 
@@ -147,8 +156,6 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
                 # set loss for missing gt pixels to be high so they are never chosen as minimum
                 gt_photometric_losses[i].append(gt_photometric_loss[i] + 1000. * gt_depth_mask)
 
-
-
         # Calculate reduced loss
         loss = self.reduce_loss(photometric_losses)
 
@@ -161,6 +168,12 @@ class HintedMultiViewPhotometricLoss(MultiViewPhotometricLoss):
 
         # make a list as in-pace sum is not auto-grad friendly
         losses = [loss, depth_hints_loss]
+
+        if self.global_scaling:
+            global_scaling_outputs = self._global_scaling_loss(inv_depths, gt_depth)
+
+            losses.append(global_scaling_outputs['loss'])
+            self.metrics.update(global_scaling_outputs['metrics'])
 
         if self.laplace_loss:
             total_laplacian_loss = self.reduce_loss(laplacian_losses, name='laplacian_loss')
