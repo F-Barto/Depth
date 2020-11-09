@@ -23,7 +23,11 @@ if __name__ == '__main__':
     besteffort = "-t besteffort" if args.best_effort else ""
     idempotent = "-t idempotent" if args.idempotent else ""
     resume = "--resume" if args.best_effort and args.idempotent else ""
-    host = f"and (host=\'{args.gpuhost}\')" if args.gpuhost != '' else ''
+    if ',' in args.gpuhost:
+        hosts = args.gpuhost.split(',')
+        host = "and (host=\'" + '\' or host=\''.join(hosts) + '\')'
+    else:
+        host = f"and (host=\'{args.gpuhost}\')" if args.gpuhost != '' else ''
 
     if args.gpus > 1 and args.gpuhost != '':
         gpus = f'gpuid={args.gpus},'
