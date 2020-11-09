@@ -3,7 +3,7 @@ includes:
 
 defaults:
   - model: monodepth18
-  - datasets: argoverse_frontcam
+  - datasets: argoverse_frontcam_4beams
   - optimizer: adam
   - scheduler: StepLR
   - losses: self_supervised
