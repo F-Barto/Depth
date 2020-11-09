@@ -169,6 +169,10 @@ class MonocularSemiSupDepth(pl.LightningModule):
             self.self_supervised_loss = MultiViewPhotometricLoss(**self.hparams.losses.MultiViewPhotometricLoss)
 
             if self.hparams.losses.get('supervised_loss_weight', 0.0) > 0.0:
+
+                if not self.multi_scale_pred:
+                    self.hparams.losses.SupervisedLoss.num_scales = 1
+
                 self.supervised_loss = ReprojectedLoss(**self.hparams.losses.SupervisedLoss)
                 self.supervised_loss_weight = hparams.losses.supervised_loss_weight
 
