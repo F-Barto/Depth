@@ -33,7 +33,7 @@ from networks.monodepth_original.depth_res_net import DepthResNet as OriginalDep
 from networks.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
 
 from losses.multiview_photometric_loss import MultiViewPhotometricLoss
-from losses.supervised_loss import ReprojectedLoss, MultimodalSelfTeachingLoss
+from losses.supervised_loss import ReprojectedLoss, SupervisedLoss, MultimodalSelfTeachingLoss
 from losses.velocity_loss import VelocityLoss
 from losses.depth_hints import HintedMultiViewPhotometricLoss
 
@@ -173,7 +173,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 if not self.multi_scale_pred:
                     self.hparams.losses.SupervisedLoss.num_scales = 1
 
-                self.supervised_loss = ReprojectedLoss(**self.hparams.losses.SupervisedLoss)
+                self.supervised_loss = SupervisedLoss(**self.hparams.losses.SupervisedLoss)
                 self.supervised_loss_weight = hparams.losses.supervised_loss_weight
 
         if self.hparams.losses.get('velocity_loss_weight', 0.0) > 0.0:
