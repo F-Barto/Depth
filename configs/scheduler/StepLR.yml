@@ -4,5 +4,5 @@
 scheduler:
     name: StepLR
     options:
-      step_size: 30
-      gamma: 0.5
+      step_size: 15
+      gamma: 0.1
