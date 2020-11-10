@@ -374,8 +374,8 @@ class RandCamSequentialArgoverseLoader(Dataset):
         if self.use_pnp:
             pnp_poses = []
             for i, source_view_img in enumerate(sample['source_views']):
-                success, r_vec, t_vec = get_pose_pnp(sample['target_view'],
-                                                     source_view_img,
+                success, r_vec, t_vec = get_pose_pnp(np.array(sample['target_view']),
+                                                     np.array(source_view_img),
                                                      sample['sparse_projected_lidar'],
                                                      sample['intrinsics'])
                 # discard if translation is too small

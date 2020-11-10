@@ -485,7 +485,10 @@ class SequentialKittiLoader(Dataset):
         if self.use_pnp:
             pnp_poses = []
             for i, source_view_img in enumerate(source_views_imgs):
-                success, r_vec, t_vec = get_pose_pnp(img, source_view_img, sample['sparse_projected_lidar'], K)
+                success, r_vec, t_vec = get_pose_pnp(np.array(img),
+                                                     np.array(source_view_img),
+                                                     sample['sparse_projected_lidar'],
+                                                     K)
                 # discard if translation is too small
                 success = success and np.linalg.norm(t_vec) > 0.15
                 if success:
