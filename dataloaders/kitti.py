@@ -492,7 +492,7 @@ class SequentialKittiLoader(Dataset):
                 # discard if translation is too small
                 success = success and np.linalg.norm(t_vec) > 0.15
                 if success:
-                    vec = np.concatenate([t_vec, r_vec], axis=0)
+                    vec = np.concatenate([t_vec, r_vec], axis=0).flatten()
                 else:
                     # return the same image and no motion when PnP fails
                     sample['source_views'][i] = img

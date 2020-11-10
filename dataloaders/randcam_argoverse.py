@@ -382,13 +382,11 @@ class RandCamSequentialArgoverseLoader(Dataset):
                 # discard if translation is too small
                 success = success and np.linalg.norm(t_vec) > 0.15
                 if success:
-                    vec = np.concatenate([t_vec, r_vec], axis=0)
+                    vec = np.concatenate([t_vec, r_vec], axis=0).flatten()
                 else:
                     # return the same image and no motion when PnP fails
                     sample['source_views'][i] = sample['target_view']
                     vec = np.zeros(6)
-                print(vec.shape)
-                print(vec)
                 pnp_poses.append(vec)
             sample['poses_pnp'] = np.stack(pnp_poses, axis=0)
 
