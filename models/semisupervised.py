@@ -129,7 +129,9 @@ class MonocularSemiSupDepth(pl.LightningModule):
             terminal_logger.error(f"Depth net {self.hparams.model.depth_net.name} not implemented")
 
         # Pose Net
-        if self.hparams.model.pose_net.name == 'packnet':
+        if hasattr(self.hparams.datasets.train, 'use_pnp') and self.hparams.datasets.train.use_pnp:
+            self.pose_net = None
+        elif self.hparams.model.pose_net.name == 'packnet':
             self.pose_net = PoseNet(**hparams.model.pose_net.options, input_channels=self.input_channels)
         elif self.hparams.model.pose_net.name == 'monodepth':
             self.pose_net = PoseResNet(**hparams.model.pose_net.options, input_channels=self.input_channels)

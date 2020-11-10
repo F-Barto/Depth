@@ -389,6 +389,8 @@ class RandCamSequentialArgoverseLoader(Dataset):
                     vec = np.zeros(6)
                 pnp_poses.append(vec)
             sample['poses_pnp'] = np.stack(pnp_poses, axis=0)
+            print('sample[poses_pnp]: ', sample['poses_pnp'])
+            print('-'*60)
 
         if self.nn_precompute:
             image_timestamp = image_name[len(camera_name)+1:]
