@@ -83,17 +83,21 @@ def get_pose_pnp(rgb_curr, rgb_near, depth_curr, K):
             pts3d_curr.append(xyz_curr)
             pts2d_near_filtered.append(pts2d_near[i])
 
-    # the minimal number of points accepted by solvePnP is 6:
-    if len(pts3d_curr) >= 6 and len(pts2d_near_filtered) >= 6:
-        pts3d_curr = np.expand_dims(np.array(pts3d_curr).astype(np.float32),
-                                    axis=1)
-        pts2d_near_filtered = np.expand_dims(
-            np.array(pts2d_near_filtered).astype(np.float32), axis=1)
 
+
+    pts3d_curr = np.expand_dims(np.array(pts3d_curr).astype(np.float32), axis=1)
+    pts2d_near_filtered = np.expand_dims(
+        np.array(pts2d_near_filtered).astype(np.float32), axis=1)
+
+    same_length = pts3d_curr.shape[0] == pts2d_near_filtered.shape[0]
+    # the minimal number of points accepted by solvePnP is 6:
+    required_count = pts3d_curr.shape[0] >= 6 and pts2d_near_filtered.shape[0] >= 6
+
+    if same_length and required_count:
         # ransac
         ret = cv2.solvePnPRansac(pts3d_curr,
                                  pts2d_near_filtered,
-                                 K,
+                                 K[:3,:3],
                                  distCoeffs=None)
         success = ret[0]
         rotation_vector = ret[1]
