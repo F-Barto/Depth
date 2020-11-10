@@ -385,7 +385,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         poses = None
         if 'poses_pnp' in batch:
-            pose_vec = batch['poses_pnp']
+            pose_vec = batch['poses_pnp'].float()
             poses = [Pose.from_vec(pose_vec[:, i], self.rotation_mode) for i in range(pose_vec.shape[1])]
         elif 'source_views' in batch and self.pose_net is not None:
             poses = self.compute_poses(batch['target_view'], batch['source_views'])
