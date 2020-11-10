@@ -23,7 +23,7 @@ def feature_match(img1, img2):
     # max_n_features = 500
     use_flann = False  # better not use flann
 
-    detector = cv2.xfeatures2d.SIFT_create(max_n_features)
+    detector = cv2.features2d.SIFT_create(max_n_features)
 
     # find the keypoints and descriptors with SIFT
     kp1, des1 = detector.detectAndCompute(img1, None)
@@ -83,15 +83,13 @@ def get_pose_pnp(rgb_curr, rgb_near, depth_curr, K):
             pts3d_curr.append(xyz_curr)
             pts2d_near_filtered.append(pts2d_near[i])
 
-
-
     pts3d_curr = np.expand_dims(np.array(pts3d_curr).astype(np.float32), axis=1)
     pts2d_near_filtered = np.expand_dims(
         np.array(pts2d_near_filtered).astype(np.float32), axis=1)
 
     same_length = pts3d_curr.shape[0] == pts2d_near_filtered.shape[0]
-    # the minimal number of points accepted by solvePnP is 6:
-    required_count = pts3d_curr.shape[0] >= 6 and pts2d_near_filtered.shape[0] >= 6
+    # the minimal number of points accepted by solvePnP is 4:
+    required_count = pts3d_curr.shape[0] >= 4 and pts2d_near_filtered.shape[0] >= 4
 
     print('pts3d_curr.shape: ', pts3d_curr.shape)
     print('pts2d_near_filtered.shape: ', pts2d_near_filtered.shape)
@@ -101,7 +99,8 @@ def get_pose_pnp(rgb_curr, rgb_near, depth_curr, K):
         ret = cv2.solvePnPRansac(pts3d_curr,
                                  pts2d_near_filtered,
                                  K[:3,:3],
-                                 distCoeffs=None)
+                                 distCoeffs=None,
+                                 flags=cv2.SOLVEPNP_P3P)
         success = ret[0]
         rotation_vector = ret[1]
         translation_vector = ret[2]
