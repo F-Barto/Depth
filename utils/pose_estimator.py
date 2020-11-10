@@ -62,7 +62,6 @@ def feature_match(img1, img2):
 def get_pose_pnp(rgb_curr, rgb_near, depth_curr, K):
     gray_curr = rgb2gray(rgb_curr).astype(np.uint8)
     gray_near = rgb2gray(rgb_near).astype(np.uint8)
-    height, width = gray_curr.shape
 
     pts2d_curr, pts2d_near = feature_match(gray_curr,
                                            gray_near)  # feature matching
@@ -84,8 +83,8 @@ def get_pose_pnp(rgb_curr, rgb_near, depth_curr, K):
             pts3d_curr.append(xyz_curr)
             pts2d_near_filtered.append(pts2d_near[i])
 
-    # the minimal number of points accepted by solvePnP is 4:
-    if len(pts3d_curr) >= 4 and len(pts2d_near_filtered) >= 4:
+    # the minimal number of points accepted by solvePnP is 6:
+    if len(pts3d_curr) >= 6 and len(pts2d_near_filtered) >= 6:
         pts3d_curr = np.expand_dims(np.array(pts3d_curr).astype(np.float32),
                                     axis=1)
         pts2d_near_filtered = np.expand_dims(
