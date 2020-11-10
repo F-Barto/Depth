@@ -8,3 +8,5 @@ defaults:
   - scheduler: StepLR
   - losses: self_supervised
 
+trainer:
+  max_epochs: 30

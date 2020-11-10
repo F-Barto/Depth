@@ -11,8 +11,11 @@ defaults:
 
 log_images_interval: 200 # log images every X steps (used in val and test only)
 
+
+
 trainer:
   accumulate_grad_batches: 2 # Accumulated gradients runs of K batches before doing a backwards pass.
+  max_epochs: 30
 
 dataloaders:
   train:
