@@ -15,6 +15,10 @@ from random import randrange
 import skimage.io
 import pickle
 
+import cv2
+
+from utils.pose_estimator import get_pose_pnp
+
 from pytorch_lightning import _logger as terminal_logger
 
 # parametric continuous conv pre-requisites
@@ -22,6 +26,9 @@ from sklearn.neighbors import KDTree
 from argoverse.data_loading.pose_loader import get_city_SE3_egovehicle_at_sensor_t
 from argoverse.utils.calibration import point_cloud_to_homogeneous
 from argoverse.utils.ply_loader import load_ply
+
+
+
 
 
 
@@ -193,7 +200,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
     def __init__(self, argoverse_tracking_root_dir,  gt_depth_root_dir=None,
                  sparse_depth_root_dir=None, data_transform=None, data_transform_options=None,
                  load_pose=False, split_file=None, input_channels=3, fix_cam_idx=None, nn_precompute=False,
-                 nn_scales=[0.4, 0.4 / 2, 0.4 / 4 , 0.4 / 8]):
+                 nn_scales=[0.4, 0.4 / 2, 0.4 / 4 , 0.4 / 8], use_pnp=False):
 
         """
         Parameters
@@ -216,6 +223,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
         super().__init__()
 
         self.load_pose = load_pose
+        self.use_pnp = use_pnp
 
         self.nn_precompute = nn_precompute
         assert len(nn_scales) > 0
@@ -350,6 +358,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
             source_views = [self.load_img(p) for p in source_views_paths]
             sample['source_views'] = source_views
 
+
         if self.translation_magnitudes is not None and self.load_pose:
             sample['translation_magnitudes'] = self.translation_magnitudes[idx][cam_idx]
 
@@ -361,6 +370,25 @@ class RandCamSequentialArgoverseLoader(Dataset):
 
         cam_config = self.camera_configs[log][camera_name]
         sample['intrinsics'] = cam_config.intrinsic[:3, :3]
+
+        if self.use_pnp:
+            pnp_poses = []
+            for i, source_view_img in enumerate(sample['source_views']):
+                success, r_vec, t_vec = get_pose_pnp(sample['target_view'],
+                                                     source_view_img,
+                                                     sample['sparse_projected_lidar'],
+                                                     sample['intrinsics'])
+                # discard if translation is too small
+                success = success and np.linalg.norm(t_vec) > 0.15
+                if success:
+                    vec = np.concatenate([t_vec, r_vec], axis=0)
+                else:
+                    # return the same image and no motion when PnP fails
+                    sample['source_views'][i] = sample['target_view']
+                    vec = np.zeros(6)
+                pnp_poses.append(vec)
+            pnp_poses =  np.stack(pnp_poses, axis=0)
+            sample['poses_pnp'] = pnp_poses
 
         if self.nn_precompute:
             image_timestamp = image_name[len(camera_name)+1:]
