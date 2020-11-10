@@ -498,8 +498,7 @@ class SequentialKittiLoader(Dataset):
                     sample['source_views'][i] = img
                     vec = np.zeros(6)
                 pnp_poses.append(vec)
-            pnp_poses =  np.stack(pnp_poses, axis=0)
-            sample['poses_pnp'] = pnp_poses
+            sample['poses_pnp'] = np.stack(pnp_poses, axis=0)
 
 
         if 'val' in self.split_name or 'test' in self.split_name:

@@ -378,6 +378,7 @@ class RandCamSequentialArgoverseLoader(Dataset):
                                                      np.array(source_view_img),
                                                      sample['sparse_projected_lidar'],
                                                      sample['intrinsics'])
+
                 # discard if translation is too small
                 success = success and np.linalg.norm(t_vec) > 0.15
                 if success:
@@ -386,9 +387,10 @@ class RandCamSequentialArgoverseLoader(Dataset):
                     # return the same image and no motion when PnP fails
                     sample['source_views'][i] = sample['target_view']
                     vec = np.zeros(6)
+                print(vec.shape)
+                print(vec)
                 pnp_poses.append(vec)
-            pnp_poses =  np.stack(pnp_poses, axis=0)
-            sample['poses_pnp'] = pnp_poses
+            sample['poses_pnp'] = np.stack(pnp_poses, axis=0)
 
         if self.nn_precompute:
             image_timestamp = image_name[len(camera_name)+1:]
