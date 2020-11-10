@@ -23,7 +23,7 @@ def feature_match(img1, img2):
     # max_n_features = 500
     use_flann = False  # better not use flann
 
-    detector = cv2.features2d.SIFT_create(max_n_features)
+    detector = cv2.SIFT_create(max_n_features)
 
     # find the keypoints and descriptors with SIFT
     kp1, des1 = detector.detectAndCompute(img1, None)
