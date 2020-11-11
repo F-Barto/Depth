@@ -149,6 +149,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         ################### Losses Definition #####################
 
         self.multi_scale_pred = True
+        print('hasattr(self.depth_net, multi_scale): ', hasattr(self.depth_net, 'multi_scale'))
         if hasattr(self.depth_net, 'multi_scale'):
             self.multi_scale_pred =  self.depth_net.multi_scale
 
