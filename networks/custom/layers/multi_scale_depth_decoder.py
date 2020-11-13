@@ -26,7 +26,6 @@ class MultiScaleDepthDecoder(nn.Module):
         self.num_ch_enc = num_ch_enc # [64, 64, 128]
         self.num_ch_dec = np.array([16,32,64,128])
 
-        num_3d_feat = 4
 
         # decoder
         self.convs = OrderedDict()

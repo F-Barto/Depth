@@ -9,19 +9,24 @@ import torch
 class DilatedResNetEncoder(nn.Module):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
-                 norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, strided=False, **kwargs):
+                 norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, strided=False, small=True,
+                 **kwargs):
         super(DilatedResNetEncoder, self).__init__()
 
         self.strided = strided
 
+        self.small = small
+
         self.num_ch_enc = np.array([64, 64, 128]) if self.strided else np.array([64, 64, 512])
+
+        if self.small:
+            self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
         self.no_maxpool = no_maxpool
-
 
         self.inplanes = 64
 
@@ -39,7 +44,7 @@ class DilatedResNetEncoder(nn.Module):
         else:
             stride = 2
 
-        if self.strided:
+        if self.strided and self.small:
             self.up_last_group = nn.Sequential(
                 nn.Conv2d(640, 128, kernel_size=3, padding=1, stride=1, bias=True),
                 activation(inplace=True)
@@ -111,16 +116,21 @@ class DilatedResNetEncoder(nn.Module):
         self.features.append(self.layer1(x))
 
         if self.strided:
-            x_1_8 = self.layer2(self.features[-1])
-            x_1_32 = self.layer4(self.layer3(x_1_8))
-            upped_x_1_32 = F.interpolate(x_1_32, scale_factor=4, mode="nearest")
+            if self.small:
+                x_1_8 = self.layer2(self.features[-1])
+                x_1_32 = self.layer4(self.layer3(x_1_8))
+                upped_x_1_32 = F.interpolate(x_1_32, scale_factor=4, mode="nearest")
 
-            concat = [x_1_8, upped_x_1_32]
-            concat = torch.cat(concat, 1)
+                concat = [x_1_8, upped_x_1_32]
+                concat = torch.cat(concat, 1)
 
-            feature = self.up_last_group(concat)
+                feature = self.up_last_group(concat)
 
-            self.features.append(feature)
+                self.features.append(feature)
+            else:
+                self.features.append(self.layer2(self.features[-1]))
+                self.features.append(self.layer3(self.features[-1]))
+                self.features.append(self.layer4(self.features[-1]))
         else:
             feature = self.layer2(self.features[-1])
             feature = self.layer3(feature)

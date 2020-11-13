@@ -63,7 +63,7 @@ class SparseConvEncoder(nn.Module):
 
         self.small = small
 
-        self.num_ch_enc = np.array([16, 16, 64])
+        self.num_ch_enc = np.array([16, 16, 32, 64, 128])
 
         if self.small:
             self.num_ch_enc = np.array([16, 16, 32])
@@ -74,11 +74,10 @@ class SparseConvEncoder(nn.Module):
         self.layer2 = self._make_layer(32, nb_blocks[1], activation, stride=2,
                                        dilation_rates=dilation_rates[1], **kwargs)
         if not self.small:
-            self.layer3 = self._make_layer(64, nb_blocks[2], activation,
+            self.layer3 = self._make_layer(64, nb_blocks[2], activation, stride=2,
                                            dilation_rates=dilation_rates[2], **kwargs)
-            self.layer4 = self._make_layer(64, nb_blocks[3], activation,
+            self.layer4 = self._make_layer(128, nb_blocks[3], activation, stride=2,
                                            dilation_rates=dilation_rates[3], **kwargs)
-
 
     def _make_layer(self, planes, blocks, activation, stride=1, dilation_rates=None, **kwargs):
 
@@ -111,8 +110,9 @@ class SparseConvEncoder(nn.Module):
 
         feature = self.layer2(self.features[-1])
         if not self.small:
-            feature = self.layer3(feature)
-            self.features.append(self.layer4(feature))
+            self.features.append(feature)
+            self.features.append(self.layer3(self.features[-1]))
+            self.features.append(self.layer4(self.features[-1]))
         else:
             self.features.append(feature)
 

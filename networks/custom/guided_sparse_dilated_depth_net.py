@@ -4,6 +4,7 @@ from functools import partial
 
 from networks.custom.layers.multi_scale_depth_decoder import MultiScaleDepthDecoder
 from networks.custom.layers.dilated_resnet import resnet18
+from networks.monodepth2.layers.depth_decoder import DepthDecoder
 from networks.custom.layers.dilated_pack_encoder import resnet18 as pack_resnet18
 from networks.custom.layers.depth_pack_decoder import DepthPackDecoder
 from networks.custom.layers.sparse_conv_encoder import SparseConvEncoder, SparseConv1x1
@@ -48,7 +49,7 @@ class GuidedSparseDepthResNet(nn.Module):
             self.encoder = pack_resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation)
         else:
             self.encoder = resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation,
-                                    no_maxpool=rgb_no_maxpool, strided=rgb_strided)
+                                    no_maxpool=rgb_no_maxpool, strided=rgb_strided, small=lidar_small)
 
         self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls, small=lidar_small,
                                                dilation_rates=dilation_rates, combination=combination)
@@ -87,7 +88,10 @@ class GuidedSparseDepthResNet(nn.Module):
         if self.packing or self.decoder_type == 'packing':
             self.decoder = DepthPackDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
         elif self.multi_scale and self.decoder_type == 'iterative':
-            self.decoder = MultiScaleDepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+            if self.small:
+                self.decoder = MultiScaleDepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+            else:
+                self.decoder = DepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
         else:
             self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
 
