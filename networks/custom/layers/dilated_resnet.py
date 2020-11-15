@@ -19,7 +19,7 @@ class DilatedResNetEncoder(nn.Module):
 
         self.num_ch_enc = np.array([64, 64, 128]) if self.strided else np.array([64, 64, 512])
 
-        if self.small:
+        if not self.small:
             self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
         if norm_layer is None:
