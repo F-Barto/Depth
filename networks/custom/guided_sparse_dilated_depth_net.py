@@ -39,6 +39,7 @@ class GuidedSparseDepthResNet(nn.Module):
         assert guidance in ['attention', 'continuous']
 
         self.inverse_lidar_input = inverse_lidar_input
+        self.lidar_small = lidar_small
 
         activation_cls = get_activation(activation)
 
@@ -49,7 +50,7 @@ class GuidedSparseDepthResNet(nn.Module):
             self.encoder = pack_resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation)
         else:
             self.encoder = resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation,
-                                    no_maxpool=rgb_no_maxpool, strided=rgb_strided, small=lidar_small)
+                                    no_maxpool=rgb_no_maxpool, strided=rgb_strided, small=self.lidar_small)
 
         self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls, small=lidar_small,
                                                dilation_rates=dilation_rates, combination=combination)
