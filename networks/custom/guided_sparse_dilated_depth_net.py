@@ -88,7 +88,7 @@ class GuidedSparseDepthResNet(nn.Module):
         if self.packing or self.decoder_type == 'packing':
             self.decoder = DepthPackDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
         elif self.multi_scale and self.decoder_type == 'iterative':
-            if self.small:
+            if self.lidar_small:
                 self.decoder = MultiScaleDepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
             else:
                 self.decoder = DepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
