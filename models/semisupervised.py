@@ -215,13 +215,19 @@ class MonocularSemiSupDepth(pl.LightningModule):
             metrics.update({metrics_prefix + k : v for k,v in hinted_output['metrics'].items()})
 
         else:
+
+            mask = None
+            if self.hparams.losses.get('masked_photo', False):
+                mask = (batch['sparse_projected_lidar_original'] > 0).detach()
+
             self_sup_output = self.self_supervised_loss(
                 batch['target_view_original'],
                 batch['source_views_original'],
                 disp_preds,
                 batch['intrinsics'],
                 poses_preds,
-                progress=progress)
+                progress=progress,
+                mask = mask)
 
             losses.append(self_sup_output['loss'])
             metrics.update({metrics_prefix + k: v for k, v in self_sup_output['metrics'].items()})
