@@ -282,7 +282,7 @@ class MultiViewPhotometricLoss(LossBase):
         # Return total photometric loss
         return photometric_loss
 
-    def reduce_loss(self, losses, name='photometric_loss'):
+    def reduce_loss(self, losses, name='photometric_loss', mask=None):
         """
         Combine the photometric loss from all context images
         Parameters
@@ -300,7 +300,10 @@ class MultiViewPhotometricLoss(LossBase):
             if self.photometric_reduce_op == 'mean':
                 return sum([l.mean() for l in losses]) / len(losses)
             elif self.photometric_reduce_op == 'min':
-                return torch.cat(losses, 1).min(1, True)[0].mean()
+                if mask is None:
+                    return torch.cat(losses, 1).min(1, True)[0].mean()
+                else:
+                    return torch.cat(losses, 1).min(1, True)[0][mask].mean()
             else:
                 raise NotImplementedError(
                     'Unknown photometric_reduce_op: {}'.format(self.photometric_reduce_op))
@@ -406,7 +409,7 @@ class MultiViewPhotometricLoss(LossBase):
 
     ########################################################################################################################
 
-    def forward(self, target_view, source_views, inv_depths, K, poses, progress=0.0):
+    def forward(self, target_view, source_views, inv_depths, K, poses, progress=0.0, mask=None):
         """
         Calculates training photometric loss.
         Parameters
@@ -470,12 +473,12 @@ class MultiViewPhotometricLoss(LossBase):
                         laplacian_losses[i].append(unwarped_laplacian_loss[i])
 
         # Calculate reduced photometric loss
-        total_photo_loss = self.reduce_loss(photometric_losses)
+        total_photo_loss = self.reduce_loss(photometric_losses, mask=mask)
 
         losses = [total_photo_loss]
 
         if self.laplace_loss:
-            total_laplacian_loss = self.reduce_loss(laplacian_losses, name='laplacian_loss')
+            total_laplacian_loss = self.reduce_loss(laplacian_losses, name='laplacian_loss', mask=mask)
             losses.append(total_laplacian_loss)
 
         # Include smoothness loss if requested

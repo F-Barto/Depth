@@ -1,0 +1,12 @@
+includes:
+  - ../base.yml
+
+defaults:
+  - model: monodepth18
+  - datasets: kitti_4beams_fullres
+  - optimizer: adam
+  - scheduler: StepLR
+  - losses: self_supervised
+
+trainer:
+  max_epochs: 30

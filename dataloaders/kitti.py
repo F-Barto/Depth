@@ -20,9 +20,12 @@ In this module, the docstring follows the NumPy/SciPy formatting rules.
 import numpy as np
 from PIL import Image
 from pathlib import Path
+import cv2
 
 from torch.utils.data import Dataset
 from pytorch_lightning import _logger as terminal_logger
+from dataloaders.kitti_pose_utils import KITTIRawOxts
+from utils.pose_estimator import get_pose_pnp
 
 
 KITTI_RAW_LEFT_STEREO_IMAGE_DIR = 'image_02/data'
@@ -53,7 +56,7 @@ class SequentialKittiLoader(Dataset):
 
     def __init__(self, kitti_root_dir, split_file_path, gt_depth_root_dir=None, sparse_depth_root_dir=None,
                  data_transform=None, data_transform_options=None, source_views_indexes=[-1, 1], load_pose=False,
-                 eval_on_sparse=False, input_channels=3):
+                 eval_on_sparse=False, input_channels=3, use_pnp=False):
 
         """
         Parameters
@@ -88,6 +91,8 @@ class SequentialKittiLoader(Dataset):
         assert Path(kitti_root_dir).exists, kitti_root_dir
         assert input_channels in [1,3]
         self.input_channels = {1: 'gray', 3: 'rgb'}[input_channels]
+
+        self.use_pnp = use_pnp
 
         self.data_transform = data_transform
         self.data_transform_options = data_transform_options
@@ -129,6 +134,8 @@ class SequentialKittiLoader(Dataset):
 
         self.kitti_root_dir = Path(kitti_root_dir).expanduser()
         self.load_pose = load_pose
+        if self.load_pose:
+            self.oxts_reader = KITTIRawOxts()
 
         self.intrinsics = self.get_intrinsics_for_all_sequences(split_file_path)
         img_paths = self.load_absolute_paths_from_split_file(split_file_path)
@@ -452,6 +459,10 @@ class SequentialKittiLoader(Dataset):
                 source_views_imgs = [source_views_img.convert('L') for source_views_img in source_views_imgs]
             sample['source_views'] = source_views_imgs
 
+        if self.load_pose:
+            sample['translation_magnitudes'] = \
+                self.oxts_reader.get_magnitude_between_pairs(img_path, source_views_paths)
+
         # e.g., img_path == path_to_dataset_root_dir/2011_09_26/2011_09_26_drive_0048_sync/image_02/data/0000000085.png
         capture_date = Path(img_path).parents[3].name # 2011_09_26
         K = self.intrinsics[capture_date]
@@ -470,6 +481,24 @@ class SequentialKittiLoader(Dataset):
 
             depth = self.read_npz_depth(str(depth_path))
             sample['sparse_projected_lidar'] =  depth
+
+        if self.use_pnp:
+            pnp_poses = []
+            for i, source_view_img in enumerate(source_views_imgs):
+                success, r_vec, t_vec = get_pose_pnp(np.array(img),
+                                                     np.array(source_view_img),
+                                                     sample['sparse_projected_lidar'],
+                                                     K)
+                # discard if translation is too small
+                success = success and np.linalg.norm(t_vec) > 0.15
+                if success:
+                    vec = np.concatenate([t_vec, r_vec], axis=0).flatten()
+                else:
+                    # return the same image and no motion when PnP fails
+                    sample['source_views'][i] = img
+                    vec = np.zeros(6)
+                pnp_poses.append(vec)
+            sample['poses_pnp'] = np.stack(pnp_poses, axis=0)
 
 
         if 'val' in self.split_name or 'test' in self.split_name:
@@ -492,6 +521,7 @@ class SequentialKittiLoader(Dataset):
 
         if self.data_transform is not None:
             sample = self.data_transform(sample, **self.data_transform_options)
+
 
 
         return sample

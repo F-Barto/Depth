@@ -1,66 +1,48 @@
 from torch import nn
 from networks.resnet.blocks import conv1x1, conv7x7, BasicBlock, Bottleneck
 import numpy as np
-import torch.nn.functional as F
-import torch
+
+from .packing import PackLayerConv3d, UnpackLayerConv3d
 
 # Inspired by PSPNet
 
-class DilatedResNetEncoder(nn.Module):
+class DilatedPackEncoder(nn.Module):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, groups=1, width_per_group=64,
-                 norm_layer=None, input_channels=3, no_maxpool=False, dilation=True, strided=False, small=True,
-                 **kwargs):
-        super(DilatedResNetEncoder, self).__init__()
+                 norm_layer=None, input_channels=3, dilation=True, **kwargs):
+        super(DilatedPackEncoder, self).__init__()
 
-        self.strided = strided
-
-        self.small = small
-
-        self.num_ch_enc = np.array([64, 64, 128]) if self.strided else np.array([64, 64, 512])
-
-        if not self.small:
-            self.num_ch_enc = np.array([64, 64, 128, 256, 512])
+        self.num_ch_enc = np.array([32, 64, 512])
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
 
-        self.no_maxpool = no_maxpool
-
-        self.inplanes = 64
+        self.inplanes = 32
 
         self.groups = groups
         self.base_width = width_per_group
 
         ############### first conv ###############
-        self.conv1 = conv7x7(input_channels, self.inplanes, stride=2, bias=False)
+        self.conv1 = conv7x7(input_channels, self.inplanes, stride=1, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.activation = activation(inplace=True)
 
-        if not self.no_maxpool:
-            self.pooling = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-            stride = 1
-        else:
-            stride = 2
+        ################ Packing convs ###############
+        pack_kernel = [5,3,3]
+        num_3d_feat = 4
 
-        if self.strided and self.small:
-            self.up_last_group = nn.Sequential(
-                nn.Conv2d(640, 128, kernel_size=3, padding=1, stride=1, bias=True),
-                activation(inplace=True)
-            )
+        dilations = [2, 4] if dilation else [1, 1]
 
-        strides = [2,2] if self.strided else [1,1]
-
-        dilations =  [2,4] if dilation else [1,1]
+        self.pack1 = PackLayerConv3d(32, pack_kernel[0], d=num_3d_feat)
+        self.pack2 = PackLayerConv3d(64, pack_kernel[1], d=num_3d_feat)
+        self.pack3 = PackLayerConv3d(128, pack_kernel[2], d=num_3d_feat)
 
         ############### body ###############
-        self.layer1 = self._make_layer(block, 64, layers[0], activation, stride=stride, **kwargs)
-        self.layer2 = self._make_layer(block, 128, layers[1], activation, stride=2, **kwargs)
-        self.layer3 = self._make_layer(block, 256, layers[2], activation, stride=strides[0],
-                                       dilation=dilations[0], **kwargs)
-        self.layer4 = self._make_layer(block, 512, layers[3], activation, stride=strides[1],
-                                       dilation=dilations[1], **kwargs)
+        self.layer1 = self._make_layer(block, 64, layers[0], activation, pack=self.pack2, **kwargs)
+        self.layer2 = self._make_layer(block, 128, layers[1], activation, pack=self.pack3, **kwargs)
+        self.layer3 = self._make_layer(block, 256, layers[2], activation, dilation=dilations[0], **kwargs)
+        self.layer4 = self._make_layer(block, 512, layers[3], activation, dilation=dilations[1], **kwargs)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -80,19 +62,24 @@ class DilatedResNetEncoder(nn.Module):
                     nn.init.constant_(m.bn2.weight, 0)
 
 
-    def _make_layer(self, block, planes, blocks, activation, stride=1, dilation=1, **kwargs):
+    def _make_layer(self, block, planes, blocks, activation, stride=1, dilation=1, pack=None, **kwargs):
         norm_layer = self._norm_layer
+
+        layers = []
+
         downsample = None
-        if (stride != 1 or self.inplanes != planes * block.expansion):
+        if self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 conv1x1(self.inplanes, planes * block.expansion, stride),
                 norm_layer(planes * block.expansion),
             )
 
-        layers = []
+        layers.append(block(self.inplanes, planes, activation, stride, downsample=downsample, groups=self.groups,
+                            base_width=self.base_width, norm_layer=norm_layer))
 
-        layers.append(block(self.inplanes, planes, activation, stride, downsample=downsample,
-                            groups=self.groups, base_width=self.base_width, norm_layer=norm_layer))
+        if pack is not None:
+            layers.append(pack)
+
         self.inplanes = planes * block.expansion
 
         for _ in range(1, blocks):
@@ -106,41 +93,20 @@ class DilatedResNetEncoder(nn.Module):
         self.features = []
         x = self.conv1(x)
         x = self.bn1(x)
-        self.features.append(self.activation(x))
+        self.activation(x)
+        self.features.append(self.pack1(x))
 
-        if not self.no_maxpool:
-            x = self.pooling(self.features[-1])
-        else:
-            x = self.features[-1]
+        self.features.append(self.layer1(self.features[-1]))
 
-        self.features.append(self.layer1(x))
-
-        if self.strided:
-            if self.small:
-                x_1_8 = self.layer2(self.features[-1])
-                x_1_32 = self.layer4(self.layer3(x_1_8))
-                upped_x_1_32 = F.interpolate(x_1_32, scale_factor=4, mode="nearest")
-
-                concat = [x_1_8, upped_x_1_32]
-                concat = torch.cat(concat, 1)
-
-                feature = self.up_last_group(concat)
-
-                self.features.append(feature)
-            else:
-                self.features.append(self.layer2(self.features[-1]))
-                self.features.append(self.layer3(self.features[-1]))
-                self.features.append(self.layer4(self.features[-1]))
-        else:
-            feature = self.layer2(self.features[-1])
-            feature = self.layer3(feature)
-            self.features.append(self.layer4(feature))
+        feature = self.layer2(self.features[-1])
+        feature = self.layer3(feature)
+        self.features.append(self.layer4(feature))
 
         return self.features
 
 
 def _resnet(block, layers, activation, **kwargs):
-    model = DilatedResNetEncoder(block, layers, activation, **kwargs)
+    model = DilatedPackEncoder(block, layers, activation, **kwargs)
 
     return model
 

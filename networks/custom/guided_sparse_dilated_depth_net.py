@@ -2,7 +2,11 @@ import torch.nn as nn
 
 from functools import partial
 
+from networks.custom.layers.multi_scale_depth_decoder import MultiScaleDepthDecoder
 from networks.custom.layers.dilated_resnet import resnet18
+from networks.monodepth2.layers.depth_decoder import DepthDecoder
+from networks.custom.layers.dilated_pack_encoder import resnet18 as pack_resnet18
+from networks.custom.layers.depth_pack_decoder import DepthPackDecoder
 from networks.custom.layers.sparse_conv_encoder import SparseConvEncoder, SparseConv1x1
 from networks.custom.layers.skip_decoder import SkipDecoder
 from networks.monodepth2.layers.common import disp_to_depth, get_activation
@@ -27,18 +31,28 @@ class GuidedSparseDepthResNet(nn.Module):
         Extra parameters
     """
     def __init__(self, input_channels=3, activation='relu', guidance='attention', attention_scheme='res-sig',
-                 inverse_lidar_input=True, dilation_rates=None, combination='sum', **kwargs):
+                 inverse_lidar_input=True, dilation_rates=None, combination='sum', fusion_batch_norm=True,
+                 rgb_dilation=True, rgb_no_maxpool=False, lidar_small=False, rgb_strided=False, packing=False,
+                 multi_scale=False, decoder='skip', **kwargs):
         super().__init__()
 
         assert guidance in ['attention', 'continuous']
 
         self.inverse_lidar_input = inverse_lidar_input
+        self.lidar_small = lidar_small
 
         activation_cls = get_activation(activation)
 
-        # keeping the name `encoder` so that we can use pre-trained weight directly
-        self.encoder = resnet18(activation_cls, input_channels=input_channels)
-        self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls,
+        self.multi_scale = multi_scale
+        self.packing = packing
+
+        if self.packing:
+            self.encoder = pack_resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation)
+        else:
+            self.encoder = resnet18(activation_cls, input_channels=input_channels, dilation=rgb_dilation,
+                                    no_maxpool=rgb_no_maxpool, strided=rgb_strided, small=self.lidar_small)
+
+        self.lidar_encoder = SparseConvEncoder([2,2,2,2], activation_cls, small=lidar_small,
                                                dilation_rates=dilation_rates, combination=combination)
 
         self.num_ch_enc = self.encoder.num_ch_enc
@@ -62,11 +76,26 @@ class GuidedSparseDepthResNet(nn.Module):
             num_ch =  self.num_ch_enc[i]
 
             if guidance == 'attention':
-                self.guidances.update({f"guidance_{i}": AttentionGuidance(num_ch, activation_cls, attention_scheme)})
+                guidance_module = AttentionGuidance(num_ch, activation_cls, attention_scheme, 
+                                                    use_batch_norm=fusion_batch_norm)
+                self.guidances.update({f"guidance_{i}": guidance_module})
             else:
                 print(f"guidance {guidance} not implemented")
 
-        self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        self.decoder_type = decoder
+
+        assert self.decoder_type in ['skip', 'packing', 'iterative']
+
+        if self.packing or self.decoder_type == 'packing':
+            self.decoder = DepthPackDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        elif self.multi_scale and self.decoder_type == 'iterative':
+            if self.lidar_small:
+                self.decoder = MultiScaleDepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+            else:
+                self.decoder = DepthDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+        else:
+            self.decoder = SkipDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls, **kwargs)
+
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=0.1, max_depth=120.0)
 
@@ -83,7 +112,7 @@ class GuidedSparseDepthResNet(nn.Module):
         cam_features = self.encoder(cam_input)
         lidar_features = self.lidar_encoder(lidar_input)
 
-        extended_lidar_features = [self.extend_lidar[f"extend_lidar{i}"](lidar_features[i])[0]
+        extended_lidar_features = [self.extend_lidar[f"extend_lidar{i}"](lidar_features[i])
                                    for i in range(nb_features)]
         lidar_features = extended_lidar_features
 
@@ -92,8 +121,29 @@ class GuidedSparseDepthResNet(nn.Module):
             guided_feature = self.guidances[f"guidance_{i}"](cam_features[i], lidar_features[i])
             self.guided_features.append(guided_feature)
 
-        outputs = self.decoder(self.guided_features)
+        preds = self.decoder(self.guided_features)
 
-        outputs = {k: self.scale_inv_depth(v)[0] for k,v in outputs.items()}
+        outputs = {}
+
+        if not self.multi_scale:
+            keys = ['disp', 'coarse_disp']
+            for key in keys:
+                if key in preds:
+                    outputs[key] = self.scale_inv_depth(preds[key])[0]
+            if 'uncertainty' in preds:
+                outputs['uncertainty'] = preds['uncertainty']
+
+        else:
+            disps = [preds[('disp', i)] for i in range(4)]
+            uncertainties = [preds[('uncertainty', i)] for i in range(4) if ('uncertainty', i) in preds]
+
+            if self.training:
+                outputs['inv_depths'] = [self.scale_inv_depth(d)[0] for d in disps]
+                if len(uncertainties)>0:
+                    outputs['uncertainties'] = uncertainties
+            else:
+                outputs['inv_depths'] = self.scale_inv_depth(disps[0])[0]
+                if len(uncertainties) > 0:
+                    outputs['uncertainties'] = uncertainties[0]
 
         return outputs

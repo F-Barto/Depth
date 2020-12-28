@@ -178,6 +178,7 @@ class SupervisedLoss(LossBase):
 
         # Match predicted scales for ground-truth
         gt_depths = match_scales(gt_depth, inv_depths, self.n, mode='nearest')
+
         # Calculate and store supervised loss
         losses = self.calculate_losses(inv_depths, gt_depths)
         loss = sum([losses[i] for i in range(self.n)]) / self.n

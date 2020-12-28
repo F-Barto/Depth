@@ -14,7 +14,7 @@ SPARSE_DEPTH = 'sparse_projected_lidar'
 DEPTH_KEYS = [GT_DEPTH, SPARSE_DEPTH]
 
 
-class LidarDropBlock2D():
+class LidarDropBlock2D:
     r"""
     Randomly zeroes 2D spatial blocks of the input image.
 
@@ -115,7 +115,7 @@ class LidarDropBlock2D():
         pprint({k: v / n * 100 for k, v in cum.items()})
 
 
-class LidarDropCircle2D():
+class LidarDropCircle2D:
     r"""
     Randomly zeroes 2D spatial blocks of the input image.
 
@@ -213,7 +213,7 @@ class LidarDropCircle2D():
         pprint({k: v / n * 100 for k, v in cum.items()})
 
 
-class LidarDropUniform2D():
+class LidarDropUniform2D:
     r"""
     Randomly zeroes 2D spatial blocks of the input image.
 

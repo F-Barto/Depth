@@ -33,7 +33,7 @@ from networks.monodepth_original.depth_res_net import DepthResNet as OriginalDep
 from networks.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
 
 from losses.multiview_photometric_loss import MultiViewPhotometricLoss
-from losses.supervised_loss import ReprojectedLoss, MultimodalSelfTeachingLoss
+from losses.supervised_loss import ReprojectedLoss, SupervisedLoss, MultimodalSelfTeachingLoss
 from losses.velocity_loss import VelocityLoss
 from losses.depth_hints import HintedMultiViewPhotometricLoss
 
@@ -129,7 +129,9 @@ class MonocularSemiSupDepth(pl.LightningModule):
             terminal_logger.error(f"Depth net {self.hparams.model.depth_net.name} not implemented")
 
         # Pose Net
-        if self.hparams.model.pose_net.name == 'packnet':
+        if hasattr(self.hparams.datasets.train, 'use_pnp') and self.hparams.datasets.train.use_pnp:
+            self.pose_net = None
+        elif self.hparams.model.pose_net.name == 'packnet':
             self.pose_net = PoseNet(**hparams.model.pose_net.options, input_channels=self.input_channels)
         elif self.hparams.model.pose_net.name == 'monodepth':
             self.pose_net = PoseResNet(**hparams.model.pose_net.options, input_channels=self.input_channels)
@@ -146,12 +148,16 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         ################### Losses Definition #####################
 
+        self.multi_scale_pred = True
+        print('hasattr(self.depth_net, multi_scale): ', hasattr(self.depth_net, 'multi_scale'))
+        if hasattr(self.depth_net, 'multi_scale'):
+            self.multi_scale_pred =  self.depth_net.multi_scale
 
         self.hinted_supervision = False
         if self.hparams.losses.get('HintedMultiViewPhotometricLoss', None) is not None:
             self.hinted_supervision = True
 
-            if self.hparams.model.depth_net.name == 'sparse-guiding':
+            if not self.multi_scale_pred:
                 self.hparams.losses.HintedMultiViewPhotometricLoss.supervised_num_scales = 1
                 self.hparams.losses.HintedMultiViewPhotometricLoss.num_scales = 1
 
@@ -159,14 +165,18 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         else:
 
-            if self.hparams.model.depth_net.name == 'sparse-guiding':
+            if not self.multi_scale_pred:
                 self.hparams.losses.MultiViewPhotometricLoss.num_scales = 1
 
             # Photometric loss used as main supervisory signal
             self.self_supervised_loss = MultiViewPhotometricLoss(**self.hparams.losses.MultiViewPhotometricLoss)
 
             if self.hparams.losses.get('supervised_loss_weight', 0.0) > 0.0:
-                self.supervised_loss = ReprojectedLoss(**self.hparams.losses.SupervisedLoss)
+
+                if not self.multi_scale_pred:
+                    self.hparams.losses.SupervisedLoss.num_scales = 1
+
+                self.supervised_loss = SupervisedLoss(**self.hparams.losses.SupervisedLoss)
                 self.supervised_loss_weight = hparams.losses.supervised_loss_weight
 
         if self.hparams.losses.get('velocity_loss_weight', 0.0) > 0.0:
@@ -205,13 +215,19 @@ class MonocularSemiSupDepth(pl.LightningModule):
             metrics.update({metrics_prefix + k : v for k,v in hinted_output['metrics'].items()})
 
         else:
+
+            mask = None
+            if self.hparams.losses.get('masked_photo', False):
+                mask = (batch['sparse_projected_lidar_original'] > 0).detach()
+
             self_sup_output = self.self_supervised_loss(
                 batch['target_view_original'],
                 batch['source_views_original'],
                 disp_preds,
                 batch['intrinsics'],
                 poses_preds,
-                progress=progress)
+                progress=progress,
+                mask = mask)
 
             losses.append(self_sup_output['loss'])
             metrics.update({metrics_prefix + k: v for k, v in self_sup_output['metrics'].items()})
@@ -219,7 +235,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
             if self.hparams.losses.get('supervised_loss_weight', 0.0) > 0.0:
                 # Calculate and weight supervised loss
                 sup_output = self.supervised_loss(disp_preds, batch['sparse_projected_lidar_original'],
-                                                  batch['intrinsics'], poses_preds, progress=progress)
+                                                  progress=progress)
 
                 losses.append(self.supervised_loss_weight * sup_output['loss'])
                 metrics.update({metrics_prefix + k: v for k, v in sup_output['metrics'].items()})
@@ -263,10 +279,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
 
         else:
 
-            if self.hparams.model.depth_net.name == 'sparse-guiding':
-                keys = ['disp', 'coarse_disp']
-            else:
-                keys = ['inv_depths', 'cam_disp', 'lidar_disp']
+            keys = ['inv_depths', 'disp', 'coarse_disp', 'cam_disp', 'lidar_disp']
 
             if output.get('uncertainties', None) is not None:
                 keys.append('uncertainties')
@@ -284,7 +297,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
                 # interpolate preds from all scales to biggest scale
                 if key in ['inv_depths', 'uncertainties'] and  self.hparams.upsample_depth_maps:
                     output[key] = interpolate_scales(output[key], mode='nearest')
-                    # 'cam_disp', 'lidar_disp' are one scales preds so we don't have to interpolate
+                    # 'cam_disp', 'disp', 'lidar_disp' are one scales preds so we don't have to interpolate
 
             return output
 
@@ -331,7 +344,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         # Get predicted depth
         output = self(batch)
 
-        output_key = 'disp' if self.hparams.model.depth_net.name == 'sparse-guiding' else 'inv_depths'
+        output_key = 'disp' if not self.multi_scale_pred else 'inv_depths'
 
         inv_depth = output[output_key][0]
         depth = inv2depth(inv_depth)
@@ -380,12 +393,17 @@ class MonocularSemiSupDepth(pl.LightningModule):
             output = self.compute_inv_depths(batch['target_view'])
 
         poses = None
-        if 'source_views' in batch and self.pose_net is not None:
+        if 'poses_pnp' in batch:
+            pose_vec = batch['poses_pnp'].float()
+            poses = [Pose.from_vec(pose_vec[:, i], self.rotation_mode) for i in range(pose_vec.shape[1])]
+        elif 'source_views' in batch and self.pose_net is not None:
             poses = self.compute_poses(batch['target_view'], batch['source_views'])
 
             #translation_magnitudes = batch.get('translation_magnitudes', None)
             #if translation_magnitudes is not None:
             #    poses = self.scale_poses(poses, translation_magnitudes)
+        else:
+            pass
 
         preds = {
             'poses': poses,
@@ -401,7 +419,7 @@ class MonocularSemiSupDepth(pl.LightningModule):
         else:
             progress = self.current_epoch / self.hparams.trainer.max_epochs
 
-            if self.hparams.model.depth_net.name == 'sparse-guiding':
+            if not self.multi_scale_pred:
 
                 losses, metrics = self.compute_common_losses_and_metrics(batch, preds['disp'], poses, progress)
 
