@@ -29,7 +29,7 @@ class LossHandler():
         losses = {}
 
         for loss_name in losses_names:
-            if hasattr(self.losses_hparams, loss_name):
+            if loss_name in self.losses_hparams:
                 loss_parameters = self.losses_hparams.pop(loss_name)
                 loss_object = self._losses_associations[loss_name](**loss_parameters)
 
