@@ -15,7 +15,6 @@ import copy
 
 import torch
 
-import pytorch_lightning as pl
 from pytorch_lightning import _logger as terminal_logger
 from pytorch_lightning.core.decorators import auto_move_data
 
@@ -23,10 +22,6 @@ from models.model_utils import select_depth_net, select_pose_net
 
 from losses.handlers.multiview_loss_handler import MultiViewLossHandler
 from losses.handlers.handler_base import LossHandler
-
-from dataloaders.kitti import SequentialKittiLoader
-from dataloaders.randcam_argoverse import RandCamSequentialArgoverseLoader
-from dataloaders.transforms import train_transforms, val_transforms, test_transforms
 
 from utils.pose import Pose
 from utils.image import interpolate_scales, flip_lr
@@ -36,14 +31,13 @@ from utils.common_logging import average_metrics
 from utils.loading import load_tri_network
 from utils.misc import make_list
 
+from models.model_base import BaseModel
 
-class MultiViewModel(pl.LightningModule):
-    def __init__(self, hparams, **kwargs):
-        super().__init__(**kwargs)
+class MultiViewModel(BaseModel):
+    def __init__(self, hparams):
+        super().__init__(hparams)
 
         ################### Networks Definition #####################
-
-        self.hparams = hparams
 
         # Depth Net
         self.depth_net = select_depth_net(self.hparams.model.depth_net.name, self.hparams.model.depth_net.options,
