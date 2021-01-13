@@ -1,8 +1,0 @@
-includes:
-  - self_supervised.yml
-
-losses:
-  masked_photo: False
-  supervised_loss_weight: 1.0
-  SupervisedLoss:
-    num_scales: 4        # Number of scales for supervised learning

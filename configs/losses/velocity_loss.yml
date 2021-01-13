@@ -1,6 +1,0 @@
-includes:
-  - self_supervised.yml
-
-losses:
-  velocity_loss_weight: 0.1
-  VelocityLoss:

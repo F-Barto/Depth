@@ -21,21 +21,21 @@ import pytorch_lightning as pl
 from pytorch_lightning import _logger as terminal_logger
 from pytorch_lightning.core.decorators import auto_move_data
 
-from networks.packnet.packnet import PackNet01
-from networks.packnet.posenet import PoseNet
-from networks.monodepth2.depth_rest_net import DepthResNet
-from networks.monodepth2.pose_res_net import PoseResNet
-from networks.monodepth2.guided_depth_rest_net import GuidedDepthResNet
-from networks.monodepth2.teacher_guided_depth_rest_net import TeacherGuidedDepthResNet
-from networks.custom.guided_sparse_dilated_depth_net import GuidedSparseDepthResNet
+from networks.legacy.packnet.packnet import PackNet01
+from networks.legacy.packnet.posenet import PoseNet
+from networks.legacy.monodepth2.depth_rest_net import DepthResNet
+from networks.legacy.monodepth2.pose_res_net import PoseResNet
+from networks.legacy.monodepth2.guided_depth_rest_net import GuidedDepthResNet
+from networks.legacy.monodepth2.teacher_guided_depth_rest_net import TeacherGuidedDepthResNet
+from networks.legacy.custom.guided_sparse_dilated_depth_net import GuidedSparseDepthResNet
 
-from networks.monodepth_original.depth_res_net import DepthResNet as OriginalDepthResNet
-from networks.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
+from networks.legacy.monodepth_original.depth_res_net import DepthResNet as OriginalDepthResNet
+from networks.legacy.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
 
-from losses.multiview_photometric_loss import MultiViewPhotometricLoss
-from losses.supervised_loss import ReprojectedLoss, SupervisedLoss, MultimodalSelfTeachingLoss
-from losses.velocity_loss import VelocityLoss
-from losses.depth_hints import HintedMultiViewPhotometricLoss
+from losses.legacy.multiview_photometric_loss import MultiViewPhotometricLoss
+from losses.elements.supervised_loss import SupervisedLoss, MultimodalSelfTeachingLoss
+from losses.elements.velocity_loss import VelocityLoss
+from losses.legacy.depth_hints import HintedMultiViewPhotometricLoss
 
 from dataloaders.kitti import SequentialKittiLoader
 from dataloaders.randcam_argoverse import RandCamSequentialArgoverseLoader
@@ -43,7 +43,7 @@ from dataloaders.transforms import train_transforms, val_transforms, test_transf
 
 from utils.pose import Pose
 from utils.image import interpolate_scales, flip_lr
-from utils.depth import inv2depth, depth2inv, compute_depth_metrics
+from utils.depth import inv2depth, compute_depth_metrics
 
 from utils.common_logging import average_metrics
 from utils.wandb_logging import prepare_images_to_log as wandb_prep_images
@@ -166,10 +166,10 @@ class MonocularSemiSupDepth(pl.LightningModule):
         else:
 
             if not self.multi_scale_pred:
-                self.hparams.losses.MultiViewPhotometricLoss.num_scales = 1
+                self.hparams.losses.PhotometricLoss.num_scales = 1
 
             # Photometric loss used as main supervisory signal
-            self.self_supervised_loss = MultiViewPhotometricLoss(**self.hparams.losses.MultiViewPhotometricLoss)
+            self.self_supervised_loss = MultiViewPhotometricLoss(**self.hparams.losses.PhotometricLoss)
 
             if self.hparams.losses.get('supervised_loss_weight', 0.0) > 0.0:
 

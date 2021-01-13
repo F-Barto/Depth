@@ -2,6 +2,7 @@ import numpy as np
 import torch.nn as nn
 from utils.types import is_list
 
+
 ########################################################################################################################
 
 class ProgressiveScaling:
@@ -47,9 +48,9 @@ class ProgressiveScaling:
 
 class LossBase(nn.Module):
     """Base class for losses."""
-    def __init__(self):
+    def __init__(self, **kwargs):
         """Initializes logs and metrics dictionaries"""
-        super().__init__()
+        super().__init__(**kwargs) # forwards all unused arguments
         self._logs = {}
         self._metrics = {}
 

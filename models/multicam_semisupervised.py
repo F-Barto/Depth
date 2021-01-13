@@ -23,13 +23,13 @@ from argoverse.utils.camera_stats import (
 )
 
 
-from networks.packnet.packnet import PackNet01
-from networks.packnet.posenet import PoseNet
-from networks.monodepth2.depth_rest_net import DepthResNet
-from networks.monodepth2.pose_res_net import PoseResNet
+from networks.legacy.packnet.packnet import PackNet01
+from networks.legacy.packnet.posenet import PoseNet
+from networks.legacy.monodepth2.depth_rest_net import DepthResNet
+from networks.legacy.monodepth2.pose_res_net import PoseResNet
 
-from losses.multicam_photometric_loss import MultiCamPhotometricLoss
-from losses.supervised_loss import ReprojectedLoss
+from losses.legacy.multicam_photometric_loss import MultiCamPhotometricLoss
+from losses.elements.supervised_loss import ReprojectedLoss
 
 from dataloaders.multicam_argoverse import SequentialArgoverseLoader
 from dataloaders.transforms import train_transforms, val_transforms, test_transforms
