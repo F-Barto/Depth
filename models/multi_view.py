@@ -57,7 +57,7 @@ class MultiViewModel(BaseModel):
 
         ################### Losses Definition #####################
 
-        self.multi_view_loss_handler = MultiViewLossHandler(**self.hparams.losses)
+        self.multi_view_loss_handler = MultiViewLossHandler(self.hparams.losses)
         other_losses_handler = LossHandler(self.hparams.losses).parse_all_losses()
 
         self.velocity_loss_handler = None
