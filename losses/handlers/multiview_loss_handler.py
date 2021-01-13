@@ -27,7 +27,7 @@ class MultiViewLossHandler(LossHandler, LossBase):
         losses = self.parse_losses(['photo', 'smoothness', 'hinted'])
 
         print('='*60)
-        print(losses['photo'])
+        print(losses['photo'].ssim_loss_weight)
 
         self.masked = losses_hparams.masked
 
