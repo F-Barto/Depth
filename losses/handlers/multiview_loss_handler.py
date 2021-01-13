@@ -21,8 +21,9 @@ class MultiViewLossHandler(LossHandler, LossBase):
         Extra parameters
     """
 
-    def __init__(self, losses_hparams, **kwargs):
-        super().__init__(losses_hparams=losses_hparams, **kwargs)
+    def __init__(self, losses_hparams):
+        super(LossHandler).__init__(losses_hparams=losses_hparams)
+        super(LossBase).__init__()
 
         losses = self.parse_losses(['photo', 'smoothness', 'hinted'])
 
