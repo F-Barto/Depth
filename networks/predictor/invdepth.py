@@ -3,7 +3,8 @@ from functools import partial
 import torch.nn as nn
 
 from networks.common.basic_blocks import PaddedConv3x3, disp_to_depth
-from networks.predictor.common import MultiScaleBasePredictor
+from networks.predictor.base import MultiScaleBasePredictor
+
 
 class InvDepthPredictor(nn.Module):
     def __init__(self, in_chans, prefix='', postfix=''):

@@ -1,17 +1,9 @@
 import abc
-
-from .invdepth import InvDepthPredictor, MultiScaleInvDepthPredictor
-
-def create_multiscale_predictor(predictor_name, scales, **kwargs):
-    assert scales > 1
-
-    if predictor_name == 'inv_depth':
-        return MultiScaleInvDepthPredictor(scales, **kwargs)
-
+import torch.nn as nn
 
 class MultiScaleBasePredictor(nn.Module):
     def __init__(self, scales):
-        super(MultiScaleInvDepthPredictor, self).__init__()
+        super(MultiScaleBasePredictor, self).__init__()
         self.scales = scales
 
     @abc.abstractmethod

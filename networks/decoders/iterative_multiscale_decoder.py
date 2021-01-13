@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 from networks.common.basic_blocks import PaddedConv3x3Block, nearest_upsample, SubPixelUpsamplingBlock
-from networks.predictor.common import create_multiscale_predictor
+from networks.predictor.utils import create_multiscale_predictor
 
 
 class MultiscalePredictionDecoder(nn.Module):
