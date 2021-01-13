@@ -36,6 +36,5 @@ class LossHandler():
                 losses[loss_name] = loss_object
 
                 terminal_logger.info(f"Initialized loss '{loss_name}' with parameters {loss_parameters}")
-        terminal_logger.info('-'*60 + "\n")
 
         return losses

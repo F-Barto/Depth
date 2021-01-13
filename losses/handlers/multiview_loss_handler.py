@@ -31,7 +31,7 @@ class MultiViewLossHandler(LossHandler, LossBase):
 
         self.masked = losses_hparams.masked
 
-        self.photo_loss_handler = losses.get('photo', None)
+        self.photo_loss_handler = losses['photo'] if 'photo' in losses else None
         assert self.photo_loss_handler is not None, "You have to parametrize the photometric loss"
         self.smoothness_loss_handler = losses.get('smoothness', None)
         self.hinted_loss_handler = losses.get('hinted', None)
