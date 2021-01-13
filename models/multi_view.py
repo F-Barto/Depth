@@ -43,9 +43,11 @@ class MultiViewModel(pl.LightningModule):
 
         ################### Networks Definition #####################
 
+        self.hparams = hparams
+
         # Depth Net
-        self.depth_net = select_depth_net(self.hparams.model.depth_net.name, hparams.model.depth_net.options,
-                                          hparams.input_channels, self.train_dataset.load_sparse_depth)
+        self.depth_net = select_depth_net(self.hparams.model.depth_net.name, self.hparams.model.depth_net.options,
+                                          self.hparams.input_channels, self.train_dataset.load_sparse_depth)
 
         # Pose Net
         if hasattr(self.hparams.datasets.train, 'use_pnp') and self.hparams.datasets.train.use_pnp:
@@ -72,6 +74,7 @@ class MultiViewModel(pl.LightningModule):
         self.regression_loss_handler = None
         if 'regression' in other_losses_handler:
             self.regression_loss_handler = other_losses_handler['regression']
+
 
     def compute_common_losses_and_metrics(self, batch, disp_preds, poses_preds, progress=0.0, metrics_prefix=''):
         losses = []
@@ -104,6 +107,7 @@ class MultiViewModel(pl.LightningModule):
             metrics.update({metrics_prefix + k: v for k, v in velocity_output['metrics'].items()})
 
         return losses, metrics
+
 
     def compute_inv_depths(self, image, sparse_depth=None):
         """Computes inverse depth maps from single images"""
@@ -151,6 +155,7 @@ class MultiViewModel(pl.LightningModule):
         pose_vec = self.pose_net(target_view, source_views)
         return [Pose.from_vec(pose_vec[:, i], self.rotation_mode) for i in range(pose_vec.shape[1])]
 
+
     def evaluate_depth(self, batch):
         """
         Evaluate batch to produce depth metrics.
@@ -189,6 +194,7 @@ class MultiViewModel(pl.LightningModule):
                 result[key] = output[key][0]
 
         return result
+
 
     @auto_move_data
     def forward(self, batch):
@@ -236,7 +242,6 @@ class MultiViewModel(pl.LightningModule):
 
     def training_step(self, batch, *args):
         """
-
         Parameters
         ----------
         batch: (Tensor | (Tensor, …) | [Tensor, …])
@@ -263,14 +268,12 @@ class MultiViewModel(pl.LightningModule):
 
             others....
         """
-
         output = self(batch)
 
         log_losses = output['loss']
         log_metrics = copy.deepcopy(output['metrics'])
 
         logs = self.log_train(log_losses, log_metrics)
-
 
         results = {
             'loss': output['loss'],
@@ -279,6 +282,7 @@ class MultiViewModel(pl.LightningModule):
         }
 
         return results
+
 
     def validation_step(self, batch, batch_idx):
         output = self.evaluate_depth(batch)
@@ -330,6 +334,7 @@ class MultiViewModel(pl.LightningModule):
 
         return results
 
+
     def test_step(self, batch, batch_idx):
         output = self.evaluate_depth(batch)
         # output contains 'metrics' tensor average over the batch and 'inv_depth' the predicted inverse depth maps
@@ -337,6 +342,7 @@ class MultiViewModel(pl.LightningModule):
         images = self.log_images(batch, output, batch_idx, 'test')
 
         return {'images': images, 'metrics': output['metrics']}
+
 
     def test_epoch_end(self, outputs):
         list_of_metrics = [output['metrics'] for output in outputs]
@@ -353,8 +359,8 @@ class MultiViewModel(pl.LightningModule):
                              }
         }
 
-
         return results
+
 
     def on_train_end(self):
         self.trainer.checkpoint_callback._save_model(filepath=self.trainer.checkpoint_callback.dirpath+'/latest.ckpt')
