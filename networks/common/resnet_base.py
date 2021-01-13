@@ -7,7 +7,7 @@ from functools import partial
 class ResNetBase(nn.Module):
 
     def __init__(self, groups=1, width_per_group=64, norm_layer=None, **kwargs):
-        super(ResNetBase, self).__init__()
+        super(self).__init__(**kwargs)
 
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d

@@ -8,7 +8,7 @@ from networks.common.basic_blocks import conv7x7
 class ResNetExtractor(ResNetBase):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, input_channels=3, **kwargs):
-        super(ResNetBase, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
 
