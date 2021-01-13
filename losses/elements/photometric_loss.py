@@ -121,8 +121,8 @@ class PhotometricLoss(LossBase):
     """
 
     def __init__(self, scales=4, ssim_loss_weight=0.85, C1=1e-4, C2=9e-4,
-                 photometric_reduce_op='min', clip_loss=0.5, padding_mode='zeros', automask_loss=False, **kwargs):
-        super().__init__(**kwargs)
+                 photometric_reduce_op='min', clip_loss=0.5, padding_mode='zeros', automask_loss=False):
+        super().__init__()
         self.n = scales
         self.ssim_loss_weight = ssim_loss_weight
         self.C1 = C1
