@@ -50,7 +50,7 @@ class LossBase(nn.Module):
     """Base class for losses."""
     def __init__(self, **kwargs):
         """Initializes logs and metrics dictionaries"""
-        super(LossBase).__init__(**kwargs) # forwards all unused arguments
+        super().__init__(**kwargs) # forwards all unused arguments
         self._logs = {}
         self._metrics = {}
 
