@@ -38,8 +38,8 @@ from utils.misc import make_list
 
 
 class MultiViewModel(pl.LightningModule):
-    def __init__(self, hparams):
-        super().__init__(hparams)
+    def __init__(self, hparams, **kwargs):
+        super().__init__(**kwargs)
 
         ################### Networks Definition #####################
 
