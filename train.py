@@ -17,7 +17,7 @@ from pytorch_lightning.loggers.tensorboard import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateLogger
 
-from models.semisupervised import MonocularSemiSupDepth
+from models.multi_view import MultiViewModel
 from utils.config import load_yaml
 
 
@@ -33,7 +33,7 @@ def main(project_config, hparams, resume=False):
     np.random.seed(0)
 
     # init module
-    model = MonocularSemiSupDepth(hparams)
+    model = MultiViewModel(hparams)
 
     # tags associated to the run
     def shape_format(shape):

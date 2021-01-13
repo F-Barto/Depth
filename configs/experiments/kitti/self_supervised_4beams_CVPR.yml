@@ -3,7 +3,7 @@ includes:
 
 defaults:
   - model: monodepth18
-  - datasets: kitti_4beams_fullres
+  - datasets: kitti_4beams
   - optimizer: adam
   - scheduler: StepLR
   - losses: self_supervised
