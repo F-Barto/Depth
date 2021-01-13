@@ -6,7 +6,7 @@ from losses.elements.smoothness_loss import SmoothnessLoss
 from losses.elements.supervised_loss import SupervisedLoss
 from losses.elements.velocity_loss import VelocityLoss
 
-class LossHandler():
+class LossHandler:
 
     def __init__(self, losses_hparams):
 
