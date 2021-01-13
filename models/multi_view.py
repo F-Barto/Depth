@@ -41,14 +41,13 @@ class MultiViewModel(BaseModel):
 
         # Depth Net
         self.depth_net = select_depth_net(self.hparams.model.depth_net.name, self.hparams.model.depth_net.options,
-                                          self.hparams.input_channels, self.train_dataset.load_sparse_depth)
+                                          self.train_dataset.load_sparse_depth)
 
         # Pose Net
         if hasattr(self.hparams.datasets.train, 'use_pnp') and self.hparams.datasets.train.use_pnp:
             self.pose_net = None
         else:
-            self.pose_net = select_pose_net(self.hparams.model.pose_net.name, hparams.model.pose_net.options,
-                                            hparams.input_channels)
+            self.pose_net = select_pose_net(self.hparams.model.pose_net.name, hparams.model.pose_net.options)
 
         ################### Checkpoint loading Definition #####################
 

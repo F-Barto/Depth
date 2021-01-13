@@ -10,7 +10,7 @@ from networks.legacy.monodepth_original.pose_res_net import PoseResNet as Origin
 from networks.nets.depth_nets.monodepth2 import DepthNetMonodepth2
 from networks.nets.pose_nets.monodepth2 import PoseResNet
 
-def select_depth_net(depth_net_name, depth_net_options, input_channels=3, load_sparse_depth=False):
+def select_depth_net(depth_net_name, depth_net_options, load_sparse_depth=False):
 
     sparse_depth_input_required = ['guiding', 'sparse-guiding']
     if depth_net_name in sparse_depth_input_required:
@@ -30,9 +30,6 @@ def select_depth_net(depth_net_name, depth_net_options, input_channels=3, load_s
         depth_net = GuidedSparseDepthResNet
     else:
         raise NotImplementedError(f"Depth network of name {depth_net_name} not implemented")
-
-    if depth_net_name != 'monodepth_original':
-        depth_net_options['input_channels'] = input_channels
 
     return depth_net(**depth_net_options)
 

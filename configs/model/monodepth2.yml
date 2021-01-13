@@ -1,3 +1,5 @@
+input_channels: 3
+
 model:
   tri_checkpoint_path: ???
   depth_net:
@@ -6,7 +8,7 @@ model:
       activation: elu
       encoder_options:
         version: 18        # choices=[18, 34, 50, 101, 152]
-        input_channels: 3
+        input_channels: ${input_channels}
         zero_init_residual: False
       decoder_options:
         scales: 4
@@ -17,4 +19,4 @@ model:
     options:
       version: 18
       activation: elu
-      input_channels: 3
+      input_channels: ${input_channels}
