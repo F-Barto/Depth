@@ -22,8 +22,7 @@ class MultiViewLossHandler(LossBase, LossHandler):
     """
 
     def __init__(self, losses_hparams):
-        super(LossBase, self).__init__()
-        super(LossHandler, self).__init__(losses_hparams)
+        super().__init__(losses_hparams=losses_hparams)
 
         losses = self.parse_losses(['photo', 'smoothness', 'hinted'])
 
