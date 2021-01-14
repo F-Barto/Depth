@@ -11,7 +11,7 @@ from losses.loss_base import LossBase
 from losses.handlers.handler_base import LossHandler
 
 
-class MultiViewLossHandler(LossHandler, LossBase):
+class MultiViewLossHandler(LossBase, LossHandler):
     """
     Semi-Supervised loss for inverse depth maps.
 
