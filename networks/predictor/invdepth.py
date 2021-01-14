@@ -62,4 +62,4 @@ class MultiScaleInvDepthPredictor(MultiScaleBasePredictor):
         if self.training:
             return {self.prefix+f'inv_depths'+self.postfix: scaled_values}
         else:
-            return self.get_prediction(0)
+            return {self.prefix+f'inv_depths'+self.postfix: self.get_prediction(0)}

@@ -108,7 +108,7 @@ class MultiViewModel(BaseModel):
         flip = random.random() < 0.5 if self.training else False
 
         if flip:
-            image = flip_lr(image) if self.depth_net.require_image_input else sparse_depth
+            image = flip_lr(image) if self.depth_net.require_image_input else image
             sparse_depth = flip_lr(sparse_depth) if self.depth_net.require_lidar_input else sparse_depth
 
         if self.depth_net.require_lidar_input and self.depth_net.require_image_input:
