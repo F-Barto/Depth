@@ -47,12 +47,6 @@ class MultiscalePredictionDecoder(nn.Module):
         x = input_features[-1]
         for i in range(self.scales, -1, -1):
 
-            if self.refine_preds and i < 3:
-                x = [x, self.outputs[("disp", i+1)]]
-                if self.uncertainty:
-                    x.append(self.outputs[("uncertainty", i+1)])
-                x = torch.cat(x, 1)
-
             x = self.convs[("upconv", i, 0)](x)
 
             if self.upsample_mode == 'pixelshuffle':
