@@ -34,7 +34,9 @@ class MultiscalePredictionDecoder(nn.Module):
                 self.convs[f"pixelshuffle_i"] = SubPixelUpsamplingBlock(num_ch_out, upscale_factor=2, blur=do_blur)
 
             # upconv_1, post upsampling
-            num_ch_in = self.num_ch_dec[i] + self.num_ch_enc[i - 1]
+            num_ch_in = self.num_ch_dec[i]
+            if i > 0:
+                num_ch_in += self.num_ch_enc[i - 1]
             num_ch_out = self.num_ch_dec[i]
             self.convs[f"upconv_{i}_1"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation)
 
