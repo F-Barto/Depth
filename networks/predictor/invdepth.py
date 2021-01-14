@@ -41,7 +41,7 @@ class MultiScaleInvDepthPredictor(MultiScaleBasePredictor):
         self.scale_inv_depth = partial(disp_to_depth, min_depth=min_depth, max_depth=max_depth)
 
     def forward(self, x, i):
-        if i < self.scales: raise IndexError
+        if i >= self.scales: raise IndexError(f'The network has at most {self.scales} of prediction.')
 
         output = self.sigmoid(self.invdepthconvs[f'invdepthconv_{i}'](x))
 
