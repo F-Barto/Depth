@@ -56,11 +56,10 @@ class MultiscalePredictionDecoder(nn.Module):
             if self.upsample_mode == 'nearest':
                 x = nearest_upsample(x)
 
-            print('x.shape', x.shape)
-            print('input_features[i - 1].shape', input_features[i - 1].shape)
 
-            x = [x, input_features[i - 1]]
-            x = torch.cat(x, 1)
+            if i > 0:
+                x = [x, input_features[i - 1]]
+                x = torch.cat(x, 1)
 
             x = self.convs[f"upconv_{i}_1"](x)
 
