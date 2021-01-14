@@ -47,19 +47,19 @@ class MultiscalePredictionDecoder(nn.Module):
         x = input_features[-1]
         for i in range(self.scales, -1, -1):
 
-            x = self.convs[("upconv", i, 0)](x)
+            x = self.convs[f"upconv_{i}_0"](x)
 
             if self.upsample_mode == 'pixelshuffle':
-                x = self.convs[("pixelshuffle", i)](x)
+                x = self.convs[f"pixelshuffle_i"](x)
             if self.upsample_mode == 'res-pixelshuffle':
-                x = self.convs[("pixelshuffle", i)](x) + nearest_upsample(x)
+                x = self.convs[f"pixelshuffle_i"](x) + nearest_upsample(x)
             if self.upsample_mode == 'nearest':
                 x = nearest_upsample(x)
 
             x = [x, input_features[i - 1]]
             x = torch.cat(x, 1)
 
-            x = self.convs[("upconv", i, 1)](x)
+            x = self.convs[f"upconv_{i}_1"](x)
 
             if i in range(self.scales):
                 self.predictor(x, i)
