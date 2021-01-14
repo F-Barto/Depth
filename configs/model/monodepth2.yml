@@ -12,7 +12,7 @@ model:
         zero_init_residual: False
       decoder_options:
         scales: 4
-        predictor: inv_depths
+        predictor: inv_depth
         upsample_mode: nearest
   pose_net:
     name: monodepth2
