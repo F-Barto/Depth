@@ -177,7 +177,7 @@ class MultiViewLossHandler(LossHandler, LossBase):
                 photometric_losses[i].append(photometric_loss[i])
 
             # If using automask
-            if self.automask_loss:
+            if self.photo_loss_handler.automask_loss:
                 # Calculate and store unwarped image loss
                 ref_images = match_scales(source_view, inv_depths, self.n)
                 unwarped_image_loss = self.photo_loss_handler.calc_photometric_loss(ref_images, target_images)
