@@ -210,7 +210,7 @@ class MultiViewLossHandler(LossHandler, LossBase):
             smoothness_loss = self.smoothness_loss_handler(inv_depths, target_images)
             losses.append(smoothness_loss)
 
-        total_loss = torch.sum(torch.cat(losses))
+        total_loss = sum(losses)
 
         # Return losses and metrics
         return {

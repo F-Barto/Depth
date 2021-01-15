@@ -236,7 +236,7 @@ class MultiViewModel(BaseModel):
 
             losses, metrics = self.compute_common_losses_and_metrics(batch, preds['inv_depths'], poses, progress)
 
-            total_loss = torch.sum(torch.cat(losses))
+            total_loss = sum(losses)
 
             return { **preds, 'loss': total_loss, 'metrics': metrics}
 
