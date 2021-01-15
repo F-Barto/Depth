@@ -35,6 +35,9 @@ class MultiViewLossHandler(LossHandler, LossBase):
 
         self.photo_loss_handler = losses['photo'] if 'photo' in losses else None
         assert self.photo_loss_handler is not None, "You have to parametrize the photometric loss"
+
+        self.n = self.photo_loss_handler.n
+
         self.smoothness_loss_handler = losses.get('smoothness', None)
         self.hinted_loss_handler = losses.get('hinted', None)
 
@@ -148,7 +151,7 @@ class MultiViewLossHandler(LossHandler, LossBase):
             Output dictionary
         """
 
-        self.n = self.progressive_scaling(progress)
+        #self.n = self.progressive_scaling(progress)
 
         photometric_losses = [[] for _ in range(self.n)] # Container for losses computed with estimpated depth
 
