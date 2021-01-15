@@ -167,7 +167,7 @@ class MultiViewModel(BaseModel):
         # Get predicted depth
         output = self(batch)
 
-        output_key = 'disp' if not self.multi_scale_pred else 'inv_depths'
+        output_key = 'inv_depths'
 
         inv_depth = output[output_key][0]
         depth = inv2depth(inv_depth)
