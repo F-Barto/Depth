@@ -163,6 +163,7 @@ class MultiViewLossHandler(LossHandler, LossBase):
             gt_photometric_losses = [[] for _ in range(self.n)] # Container for losses computed with GT depth
             gt_depths = match_scales(gt_depth, depths, self.n)
 
+        mask = None
         if self.masked:
             assert gt_depth is not None, "Ground Truth depth is required as input to mask photo on LiDAR points"
             mask = (gt_depth > 0).detach()
