@@ -23,8 +23,6 @@ from dataloaders.kitti import SequentialKittiLoader
 from dataloaders.randcam_argoverse import RandCamSequentialArgoverseLoader
 from dataloaders.transforms import train_transforms, val_transforms, test_transforms
 
-
-IMPLEMENTED_ROTATION_MODES = ['euler']
 TENSORBOARD_LOGGER_KEY = 'tensorboard'
 WANDB_LOGGER_KEY = 'wandb'
 

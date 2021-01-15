@@ -33,6 +33,8 @@ from utils.misc import make_list
 
 from models.model_base import BaseModel
 
+IMPLEMENTED_ROTATION_MODES = ['euler']
+
 class MultiViewModel(BaseModel):
     def __init__(self, hparams):
         super().__init__(hparams)
@@ -67,6 +69,12 @@ class MultiViewModel(BaseModel):
         self.regression_loss_handler = None
         if 'regression' in other_losses_handler:
             self.regression_loss_handler = other_losses_handler['regression']
+
+        ################### HPARAMS Validation #####################
+
+        assert hparams.rotation_mode in IMPLEMENTED_ROTATION_MODES, \
+            f"Option `rotation_mode` should be in {IMPLEMENTED_ROTATION_MODES}"
+        self.rotation_mode = hparams.rotation_mode
 
 
     def compute_common_losses_and_metrics(self, batch, disp_preds, poses_preds, progress=0.0, metrics_prefix=''):
