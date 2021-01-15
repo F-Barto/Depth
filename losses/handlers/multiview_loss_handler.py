@@ -70,7 +70,7 @@ class MultiViewLossHandler(LossHandler, LossBase):
         cam = Camera(K=K.float()).scaled(scale_factor).to(device)
         ref_cam = Camera(K=ref_K.float(), Tcw=pose).scaled(scale_factor).to(device)
 
-        ref_warped = view_synthesis(ref_image, depth, ref_cam, cam, padding_mode=self.padding_mode)
+        ref_warped = view_synthesis(ref_image, depth, ref_cam, cam, padding_mode=self.photo_loss_handler.padding_mode)
 
         # Return warped reference image
         return ref_warped
