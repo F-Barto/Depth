@@ -1,4 +1,5 @@
 from networks.common.fusion.elem_wise_fusions import ElemWiseMultFusion, ElemWiseSumFusion
+from networks.common.fusion.concat import ConcatFusion
 
 import numpy as np
 
@@ -6,7 +7,8 @@ def select_fusion_module(fusion_name):
 
     fusions = {
         'mult': ElemWiseMultFusion,
-        'sum': ElemWiseSumFusion
+        'sum': ElemWiseSumFusion,
+        'concat': ConcatFusion,
     }
 
     if fusion_name not in fusions: raise NotImplementedError(f'Invalid image extractor: {fusion_name}')

@@ -11,3 +11,11 @@ class ConcatFusion(nn.Module):
         c = torch.cat([image_features, lidar_features], dim=1)
 
         return c
+
+    @property
+    def require_chans(self):
+        return False
+
+    @property
+    def require_activation(self):
+        return False

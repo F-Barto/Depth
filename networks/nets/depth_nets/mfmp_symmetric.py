@@ -32,17 +32,19 @@ class MFMPDepthNet(NetworkBase):
         Extra parameters
     """
     def __init__(self, image_extractor_name, image_extractor_hparams, lidar_extractor_name, lidar_extractor_hparams,
-                 decoder_hparams, fusion_name, activation, fusion_hparams={}, **kwargs):
+                 decoder_hparams, fusion_name, activation, fusion_hparams=None, **kwargs):
         super().__init__(**kwargs)
 
         activation_cls = get_activation(activation)
 
         # keeping the name `encoder` for image encoder so that we can use pre-trained weights from TRI for monodepth2 and packnet
-        self.encoder = select_image_extractor(image_extractor_name, **image_extractor_hparams)
+        self.encoder = select_image_extractor(image_extractor_name, activation=activation_cls,
+                                              **image_extractor_hparams)
 
-        self.lidar_encoder = select_lidar_extractor(lidar_extractor_name, **lidar_extractor_hparams)
+        self.lidar_encoder = select_lidar_extractor(lidar_extractor_name, activation=activation_cls,
+                                                    **lidar_extractor_hparams)
 
-        self.decoder = MultiscalePredictionDecoder(**decoder_hparams)
+        self.decoder = MultiscalePredictionDecoder(activation=activation_cls, **decoder_hparams)
 
         self.fusion_name = fusion_name
         self.fusion_module = select_fusion_module(self.fusion_name)
@@ -58,8 +60,14 @@ class MFMPDepthNet(NetworkBase):
         self.guidances = nn.ModuleDict()
         for i in range(len(self.num_ch_enc)):
 
-            self.fusions[f"{self.fusion_name}]_{i}"] = self.fusion_module(self.num_ch_enc[i], self.lidar_ch_enc[i],
-                                                                     activation_cls, **fusion_hparams)
+             non_setup_fusion_module = self.fusion_module()
+             args = []
+             if non_setup_fusion_module.require_chans:
+                 args += [self.num_ch_enc[i], self.lidar_ch_enc[i]]
+             if non_setup_fusion_module.require_activation:
+                 args.append(activation_cls)
+
+             self.fusions[f"{self.fusion_name}_{i}"] = non_setup_fusion_module.setup_module(*args, **fusion_hparams)
 
         self.decoder = MultiscalePredictionDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls,
                                                    scales = len(self.num_ch_enc)-1,
@@ -82,7 +90,7 @@ class MFMPDepthNet(NetworkBase):
         self.fused_features = []
         for i in range(len(self.num_ch_enc)):
 
-            fused_feature = self.fusions[f"{self.fusion_name}]_{i}"](cam_features[i], lidar_features[i])
+            fused_feature = self.fusions[f"{self.fusion_name}_{i}"](cam_features[i], lidar_features[i])
             self.fused_features.append(fused_feature)
 
         outputs = self.decoder(self.fused_features)

@@ -1,4 +1,3 @@
-from torch import nn
 import numpy as np
 
 from networks.common.resnet_base import ResNetBase

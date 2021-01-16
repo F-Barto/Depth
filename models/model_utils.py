@@ -7,31 +7,31 @@ from networks.legacy.custom.guided_sparse_dilated_depth_net import GuidedSparseD
 from networks.legacy.monodepth_original.depth_res_net import DepthResNet as OriginalDepthResNet
 from networks.legacy.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
 
+
+from networks.nets.depth_nets.mfmp_symmetric import MFMPDepthNet
 from networks.nets.depth_nets.monodepth2 import DepthNetMonodepth2
 from networks.nets.pose_nets.monodepth2 import PoseResNet
 
 def select_depth_net(depth_net_name, depth_net_options, load_sparse_depth=False):
 
-    sparse_depth_input_required = ['guiding', 'sparse-guiding']
+    sparse_depth_input_required = ['guiding', 'sparse-guiding', 'MFMP_symmetric']
     if depth_net_name in sparse_depth_input_required:
         assert load_sparse_depth, "Sparse depth signal is necessary for feature guidance."
 
-    if depth_net_name == 'packnet':
-        depth_net = PackNet01
-    elif depth_net_name == 'monodepth':
-        depth_net = DepthResNet
-    elif depth_net_name == 'monodepth2':
-        depth_net = DepthNetMonodepth2
-    elif depth_net_name == 'monodepth_original':
-        depth_net = OriginalDepthResNet
-    elif depth_net_name == 'guiding':
-        depth_net = GuidedDepthResNet
-    elif depth_net_name == 'sparse-guiding':
-        depth_net = GuidedSparseDepthResNet
-    else:
+    depth_nets = {
+        'packnet': PackNet01,
+        'monodepth': DepthResNet,
+        'monodepth2': DepthNetMonodepth2,
+        'MFMP_symmetric': MFMPDepthNet,
+        'monodepth_original': OriginalDepthResNet,
+        'guiding': GuidedDepthResNet,
+        'sparse-guiding': GuidedSparseDepthResNet
+    }
+
+    if depth_net_name not in depth_nets.keys():
         raise NotImplementedError(f"Depth network of name {depth_net_name} not implemented")
 
-    return depth_net(**depth_net_options)
+    return depth_nets[depth_net_name](**depth_net_options)
 
 def select_pose_net(pose_net_name, pose_net_options):
     if pose_net_name == 'packnet':
