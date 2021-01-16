@@ -28,7 +28,7 @@ def select_depth_net(depth_net_name, depth_net_options, load_sparse_depth=False)
         'sparse-guiding': GuidedSparseDepthResNet
     }
 
-    if depth_net_name not in depth_nets.keys():
+    if depth_net_name not in depth_nets:
         raise NotImplementedError(f"Depth network of name {depth_net_name} not implemented")
 
     return depth_nets[depth_net_name](**depth_net_options)
