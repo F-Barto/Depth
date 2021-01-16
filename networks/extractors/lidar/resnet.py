@@ -16,7 +16,7 @@ class LiDARResNetExtractor(ResNetBase):
 
     def __init__(self, block, layers, activation, zero_init_residual=False, input_channels=3, small=True,
                  **kwargs):
-        super(ResNetBase, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.small = small
         self.num_ch_enc = np.array([64, 64, 128])
@@ -28,7 +28,6 @@ class LiDARResNetExtractor(ResNetBase):
 
         ############### first conv ###############
         self.conv1 = conv7x7(input_channels, self.inplanes, stride=2, bias=False)
-        self.bn1 = self._norm_layer(self.inplanes)
         self.activation = activation(inplace=True)
 
         ############### body ###############
