@@ -44,8 +44,6 @@ class MFMPDepthNet(NetworkBase):
         self.lidar_encoder = select_lidar_extractor(lidar_extractor_name, activation=activation_cls,
                                                     **lidar_extractor_hparams)
 
-        self.decoder = MultiscalePredictionDecoder(activation=activation_cls, **decoder_hparams)
-
         self.fusion_name = fusion_name
         self.fusion_module = select_fusion_module(self.fusion_name)
 
