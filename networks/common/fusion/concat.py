@@ -12,6 +12,9 @@ class ConcatFusion(nn.Module):
 
         return c
 
+    def setup_module(self, **kwargs):
+        pass
+
     @property
     def require_chans(self):
         return False
