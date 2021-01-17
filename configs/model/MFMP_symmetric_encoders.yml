@@ -18,7 +18,6 @@ model:
         zero_init_residual: False
         small: False
       decoder_hparams:
-        scales: 4
         predictor: inv_depth
         upsample_mode: nearest
       fusion_name: concat

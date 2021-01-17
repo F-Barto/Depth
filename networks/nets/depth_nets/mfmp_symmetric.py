@@ -69,8 +69,10 @@ class MFMPDepthNet(NetworkBase):
 
              self.fusions[f"{self.fusion_name}_{i}"] = non_setup_fusion_module.setup_module(*args, **fusion_hparams)
 
+        if 'scales' not in decoder_hparams:
+            decoder_hparams['scales'] = len(self.num_ch_enc)-1
+
         self.decoder = MultiscalePredictionDecoder(num_ch_enc=self.num_ch_skips, activation=activation_cls,
-                                                   scales = len(self.num_ch_enc)-1,
                                                    **decoder_hparams)
 
     @property
