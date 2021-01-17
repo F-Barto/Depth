@@ -36,6 +36,8 @@ class MFMPDepthNet(NetworkBase):
         super().__init__(**kwargs)
 
         activation_cls = get_activation(activation)
+        if fusion_hparams is None:
+            fusion_hparams = {}
 
         # keeping the name `encoder` for image encoder so that we can use pre-trained weights from TRI for monodepth2 and packnet
         self.encoder = select_image_extractor(image_extractor_name, activation=activation_cls,
