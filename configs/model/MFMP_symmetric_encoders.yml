@@ -1,4 +1,4 @@
-input_channels: 3
+image_input_channels: 3
 
 model:
   tri_checkpoint_path: ???
@@ -9,12 +9,12 @@ model:
       image_extractor_name: resnet
       image_extractor_hparams:
         version: 18        # choices=[18, 34, 50, 101, 152]
-        input_channels: ${input_channels}
+        input_channels: ${image_input_channels}
         zero_init_residual: False
       lidar_extractor_name: lidar-resnet
       lidar_extractor_hparams:
         version: 18        # choices=[18, 34, 50, 101, 152]
-        input_channels: ${input_channels}
+        input_channels: 1
         zero_init_residual: False
         small: False
       decoder_hparams:
@@ -26,4 +26,4 @@ model:
     options:
       version: 18
       activation: elu
-      input_channels: ${input_channels}
+      input_channels: ${image_input_channels}
