@@ -60,14 +60,15 @@ class MFMPDepthNet(NetworkBase):
         self.fusions = nn.ModuleDict()
         for i in range(len(self.num_ch_enc)):
 
-             non_setup_fusion_module = self.fusion_module()
+             fusion_module = self.fusion_module()
              args = []
-             if non_setup_fusion_module.require_chans:
+             if fusion_module.require_chans:
                  args += [self.num_ch_enc[i], self.lidar_ch_enc[i]]
-             if non_setup_fusion_module.require_activation:
+             if fusion_module.require_activation:
                  args.append(activation_cls)
+             fusion_module.setup_module(*args, **fusion_hparams)
 
-             self.fusions[f"{self.fusion_name}_{i}"] = non_setup_fusion_module.setup_module(*args, **fusion_hparams)
+             self.fusions[f"{self.fusion_name}_{i}"] = fusion_module
 
         if 'scales' not in decoder_hparams:
             decoder_hparams['scales'] = len(self.num_ch_enc)-1
