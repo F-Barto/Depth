@@ -57,7 +57,7 @@ class MFMPDepthNet(NetworkBase):
         self.num_ch_skips = get_ch_post_fusion(self.fusion_name, self.lidar_ch_enc, self.num_ch_enc)
 
         # at each resblock fuse with guidance the features of both encoders
-        self.guidances = nn.ModuleDict()
+        self.fusions = nn.ModuleDict()
         for i in range(len(self.num_ch_enc)):
 
              non_setup_fusion_module = self.fusion_module()
