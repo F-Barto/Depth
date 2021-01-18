@@ -15,6 +15,8 @@ class HintedLoss(LossBase):
 
         self.supervised_method = supervised_method
 
+        self.n = supervised_num_scales
+
 
     def calc_depth_hints_mask(self, photometric_losses, gt_photometric_losses):
         depth_hints_masks = []
