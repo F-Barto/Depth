@@ -16,7 +16,8 @@ import torch.nn as nn
 
 
 class NLSPN(nn.Module):
-    def __init__(self, args, ch_g, ch_f, k_g, k_f):
+    def __init__(self, ch_g, ch_f, k_g, k_f, conf_prop, preserve_input=False, prop_time=18, affinity='affinity',
+                 affinity_gamma=0.5):
         super(NLSPN, self).__init__()
 
         # Guidance : [B x ch_g x H x W]
@@ -32,9 +33,10 @@ class NLSPN(nn.Module):
             'only odd kernel is supported but k_f = {}'.format(k_f)
         pad_f = int((k_f - 1) / 2)
 
-        self.args = args
-        self.prop_time = self.args.prop_time
-        self.affinity = self.args.affinity
+        self.prop_time = prop_time
+        self.affinity = affinity
+        self.conf_prop = conf_prop
+        self.preserve_input = preserve_input
 
         self.ch_g = ch_g
         self.ch_f = ch_f
@@ -56,8 +58,7 @@ class NLSPN(nn.Module):
                 self.aff_scale_const = nn.Parameter(self.num * torch.ones(1))
                 self.aff_scale_const.requires_grad = False
             elif self.affinity == 'TGASS':
-                self.aff_scale_const = nn.Parameter(
-                    self.args.affinity_gamma * self.num * torch.ones(1))
+                self.aff_scale_const = nn.Parameter(affinity_gamma * self.num * torch.ones(1))
             else:
                 self.aff_scale_const = nn.Parameter(torch.ones(1))
                 self.aff_scale_const.requires_grad = False
@@ -108,7 +109,7 @@ class NLSPN(nn.Module):
 
         # Apply confidence
         # TODO : Need more efficient way
-        if self.args.conf_prop:
+        if self.conf_prop:
             list_conf = []
             offset_each = torch.chunk(offset, self.num + 1, dim=1)
 
@@ -168,16 +169,16 @@ class NLSPN(nn.Module):
         assert self.ch_g == guidance.shape[1]
         assert self.ch_f == feat_init.shape[1]
 
-        if self.args.conf_prop:
+        if self.conf_prop:
             assert confidence is not None
 
-        if self.args.conf_prop:
+        if self.conf_prop:
             offset, aff = self._get_offset_affinity(guidance, confidence, rgb)
         else:
             offset, aff = self._get_offset_affinity(guidance, None, rgb)
 
         # Propagation
-        if self.args.preserve_input:
+        if self.preserve_input:
             assert feat_init.shape == feat_fix.shape
             mask_fix = torch.sum(feat_fix > 0.0, dim=1, keepdim=True).detach()
             mask_fix = (mask_fix > 0.0).type_as(feat_fix)
@@ -188,7 +189,7 @@ class NLSPN(nn.Module):
 
         for k in range(1, self.prop_time + 1):
             # Input preservation for each iteration
-            if self.args.preserve_input:
+            if self.preserve_input:
                 feat_result = (1.0 - mask_fix) * feat_result \
                               + mask_fix * feat_fix
 
@@ -201,13 +202,11 @@ class NLSPN(nn.Module):
 from networks.nets.net_base import NetworkBase
 
 class NLSPNModel(NetworkBase):
-    def __init__(self, args):
-        super(NLSPNModel, self).__init__()
+    def __init__(self, version='resnet18', conf_prop=True, from_scratch=True, prop_kernel=3, **kwargs):
+        super().__init__()
 
-
-        self.args = args
-
-        self.num_neighbors = self.args.prop_kernel*self.args.prop_kernel - 1
+        num_neighbors = prop_kernel*prop_kernel - 1
+        self.conf_prop = conf_prop
 
         # Encoder
         self.conv1_rgb = conv_bn_relu(3, 48, kernel=3, stride=1, padding=1,
@@ -215,10 +214,10 @@ class NLSPNModel(NetworkBase):
         self.conv1_dep = conv_bn_relu(1, 16, kernel=3, stride=1, padding=1,
                                       bn=False)
 
-        if self.args.network == 'resnet18':
-            net = get_resnet18(not self.args.from_scratch)
-        elif self.args.network == 'resnet34':
-            net = get_resnet34(not self.args.from_scratch)
+        if version == 'resnet18':
+            net = get_resnet18(not from_scratch)
+        elif version == 'resnet34':
+            net = get_resnet34(not from_scratch)
         else:
             raise NotImplementedError
 
@@ -262,10 +261,10 @@ class NLSPNModel(NetworkBase):
         # 1/1
         self.gd_dec1 = conv_bn_relu(64+64, 64, kernel=3, stride=1,
                                     padding=1)
-        self.gd_dec0 = conv_bn_relu(64+64, self.num_neighbors, kernel=3, stride=1,
+        self.gd_dec0 = conv_bn_relu(64+64, num_neighbors, kernel=3, stride=1,
                                     padding=1, bn=False, relu=False)
 
-        if self.args.conf_prop:
+        if self.conf_prop:
             # Confidence Branch
             # Confidence is shared for propagation and mask generation
             # 1/1
@@ -276,20 +275,8 @@ class NLSPNModel(NetworkBase):
                 nn.Sigmoid()
             )
 
-        self.prop_layer = NLSPN(args, self.num_neighbors, 1, 3,
-                                self.args.prop_kernel)
+        self.prop_layer = NLSPN(num_neighbors, 1, 3, prop_kernel, self.conf_prop, **kwargs)
 
-        # Set parameter groups
-        params = []
-        for param in self.named_parameters():
-            if param[1].requires_grad:
-                params.append(param[1])
-
-        params = nn.ParameterList(params)
-
-        self.param_groups = [
-            {'params': params, 'lr': self.args.lr}
-        ]
 
     @property
     def require_lidar_input(self):
@@ -347,7 +334,7 @@ class NLSPNModel(NetworkBase):
         gd_fd1 = self.gd_dec1(self._concat(fd2, fe2))
         guide = self.gd_dec0(self._concat(gd_fd1, fe1))
 
-        if self.args.conf_prop:
+        if self.conf_prop:
             # Confidence Decoding
             cf_fd1 = self.cf_dec1(self._concat(fd2, fe2))
             confidence = self.cf_dec0(self._concat(cf_fd1, fe1))
@@ -355,8 +342,7 @@ class NLSPNModel(NetworkBase):
             confidence = None
 
         # Diffusion
-        y, y_inter, offset, aff, aff_const = \
-            self.prop_layer(pred_init, guide, confidence, dep, rgb)
+        y, y_inter, offset, aff, aff_const = self.prop_layer(pred_init, guide, confidence, dep, rgb)
 
         # Remove negative depth
         y = torch.clamp(y, min=0)
