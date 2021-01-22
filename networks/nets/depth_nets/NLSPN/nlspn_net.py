@@ -16,7 +16,7 @@ import torch.nn as nn
 
 
 class NLSPN(nn.Module):
-    def __init__(self, ch_g, ch_f, k_g, k_f, conf_prop, preserve_input=False, prop_time=18, affinity='affinity',
+    def __init__(self, ch_g, ch_f, k_g, k_f, conf_prop, preserve_input=False, prop_time=18, affinity='TGASS',
                  affinity_gamma=0.5):
         super(NLSPN, self).__init__()
 
