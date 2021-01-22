@@ -11,6 +11,7 @@ from networks.legacy.monodepth_original.pose_res_net import PoseResNet as Origin
 from networks.nets.depth_nets.mfmp_symmetric import MFMPDepthNet
 from networks.nets.depth_nets.monodepth2 import DepthNetMonodepth2
 from networks.nets.pose_nets.monodepth2 import PoseResNet
+from networks.nets.depth_nets.NLSPN.nlspn_net import NLSPNModel
 
 def select_depth_net(depth_net_name, depth_net_options, load_sparse_depth=False):
 
@@ -25,7 +26,8 @@ def select_depth_net(depth_net_name, depth_net_options, load_sparse_depth=False)
         'MFMP_symmetric': MFMPDepthNet,
         'monodepth_original': OriginalDepthResNet,
         'guiding': GuidedDepthResNet,
-        'sparse-guiding': GuidedSparseDepthResNet
+        'sparse-guiding': GuidedSparseDepthResNet,
+        'nlspn': NLSPNModel
     }
 
     if depth_net_name not in depth_nets:
