@@ -7,7 +7,7 @@ from networks.predictor.base import MultiScaleBasePredictor
 
 
 class InvDepthPredictor(nn.Module):
-    def __init__(self, in_chans, prefix='', postfix=''):
+    def __init__(self, in_chans, prefix='', postfix='', min_depth=0.1, max_depth=120.0):
         super(InvDepthPredictor, self).__init__()
         self.invdepthconv = PaddedConv3x3(in_chans, 1)
         self.sigmoid = nn.Sigmoid()
@@ -15,11 +15,16 @@ class InvDepthPredictor(nn.Module):
         self.prefix = prefix
         self.postfix = postfix
 
+        self.scale_inv_depth = partial(disp_to_depth, min_depth=min_depth, max_depth=max_depth)
+
     def forward(self, x):
-
         output = self.sigmoid(self.invdepthconv(x))
-        return {self.prefix+'inv_depth'+self.postfix: output}
+        scaled_values = [self.scale_inv_depth(output)[0]]
 
+        if self.training:
+            return {self.prefix + f'inv_depths' + self.postfix: scaled_values}
+        else:
+            return {self.prefix + f'inv_depths' + self.postfix: self.get_prediction(0)}
 
 class MultiScaleInvDepthPredictor(MultiScaleBasePredictor):
     def __init__(self, scales, in_chans, prefix='', postfix='', min_depth=0.1, max_depth=120.0):
