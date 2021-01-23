@@ -33,9 +33,7 @@ from utils.misc import make_list
 
 from models.model_base import BaseModel
 
-IMPLEMENTED_ROTATION_MODES = ['euler']
-
-class MultiViewModel(BaseModel):
+class FullySupervisedModel(BaseModel):
     def __init__(self, hparams):
         super().__init__(hparams)
 
@@ -47,7 +45,7 @@ class MultiViewModel(BaseModel):
 
         ################### Checkpoint loading Definition #####################
 
-        tri_checkpoint_path =  self.hparams.model.get('tri_checkpoint_path', None)
+        tri_checkpoint_path = self.hparams.model.get('tri_checkpoint_path', None)
         if tri_checkpoint_path is not None:
             load_tri_network(self, tri_checkpoint_path)
 
@@ -64,10 +62,9 @@ class MultiViewModel(BaseModel):
         losses = []
         metrics = {}
 
-
         if self.regression_loss_handler is not None:
             # Calculate and weight supervised loss
-            sup_output = self.regression_loss_handler(disp_preds, batch['sparse_projected_lidar_original'],
+            sup_output = self.regression_loss_handler(disp_preds, batch['projected_lidar'],
                                                       progress=progress)
             losses.append(sup_output['loss'])
             metrics.update({metrics_prefix + k: v for k, v in sup_output['metrics'].items()})

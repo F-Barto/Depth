@@ -18,6 +18,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateLogger
 
 from models.multi_view import MultiViewModel
+from models.supervised import FullySupervisedModel
+
 from utils.config import load_yaml
 
 
@@ -33,7 +35,12 @@ def main(project_config, hparams, resume=False):
     np.random.seed(0)
 
     # init module
-    model = MultiViewModel(hparams)
+    models = {
+        'multi_view': MultiViewModel,
+        'supervised': FullySupervisedModel
+    }
+    assert hparams.model in models
+    model = models[hparams.model](hparams)
 
     # tags associated to the run
     def shape_format(shape):

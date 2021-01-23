@@ -4,6 +4,7 @@ input_channels: 3
 log_images_interval: 20 # log images every X steps (used in val and test only)
 upsample_depth_maps: True
 logger: tensorboard # either wandb or tensorboard
+model: multi_view # multi_view, supervised
 
 # These are the option for pytorch lightning's trainer
 # see https://pytorch-lightning.readthedocs.io/en/latest/trainer.html
