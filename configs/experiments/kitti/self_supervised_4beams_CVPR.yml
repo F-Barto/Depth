@@ -2,7 +2,7 @@ includes:
   - ../base.yml
 
 defaults:
-  - model: monodepth18
+  - network: monodepth18
   - datasets: kitti_4beams
   - optimizer: adam
   - scheduler: StepLR

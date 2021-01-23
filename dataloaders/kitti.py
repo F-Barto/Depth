@@ -123,13 +123,14 @@ class SequentialKittiLoader(Dataset):
             self.load_sparse_depth = True
             assert sparse_depth_root_dir is not None and sparse_depth_root_dir.exists(), sparse_depth_root_dir
 
+        self.source_views_requested = source_views_indexes is not None and len(source_views_indexes) > 0
+
         src_indexes_err_msg = "It is expected the source index list is in ascending order and does not contains 0 " \
                               "(corresponding to the target)\n " \
                               "For example, source_indexes=[-1,1] will load the views at time t-1, t, t+1\n" \
                               f"yours: {source_views_indexes}"
-        assert 0 not in source_views_indexes, src_indexes_err_msg
-
-        self.source_views_requested = source_views_indexes is not None and len(source_views_indexes) > 0
+        if self.source_views_requested:
+            assert 0 not in source_views_indexes, src_indexes_err_msg
 
         self.split_name = Path(split_file_path).stem # used in __getitem__
 
