@@ -1,6 +1,6 @@
 input_channels: 3
 
-model:
+network:
   tri_checkpoint_path: ???
   depth_net:
     name: monodepth2
