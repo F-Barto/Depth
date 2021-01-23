@@ -29,9 +29,8 @@ from utils.pose_estimator import get_pose_pnp
 
 
 KITTI_RAW_LEFT_STEREO_IMAGE_DIR = 'image_02/data'
-PROJECTED_VELODYNE_DIR = 'proj_depth/velodyne/image_02'
-PROJECTED_GROUNDTRUTH_DIR = 'proj_depth/groundtruth/image_02'
-INTRINSICS_MATRIX = 'P_rect_02'
+PROJECTED_VELODYNE_DIR = 'proj_depth/velodyne'
+PROJECTED_GROUNDTRUTH_DIR = 'proj_depth/groundtruth'
 CAMERA_CALIBRATION_FILE_NAME = 'calib_cam_to_cam.txt'
 
 
@@ -364,7 +363,7 @@ class SequentialKittiLoader(Dataset):
         found in the same line
         """
 
-        with calib_file_path.open() as calib_file:
+        with Path(calib_file_path).open() as calib_file:
             lines = calib_file.readlines()
             calibs = {l.split(":")[0]: ':'.join(l.split(":")[1:]) for l in lines}
 
@@ -390,9 +389,12 @@ class SequentialKittiLoader(Dataset):
 
         """
         calibs = self.read_calib_file(calib_file_path)
-        K = np.array(calibs[INTRINSICS_MATRIX].split()).astype(float).reshape((3, 4))
+        Ks = {}
+        for cam_idx in [2,3]:
+            K = np.array(calibs[f'P_rect_0{cam_idx}'].split()).astype(float).reshape((3, 4))
+            Ks[f'image_0{cam_idx}'] = K[:, :3]
 
-        return K[:, :3]
+        return Ks
 
     def get_intrinsics_for_all_sequences(self, split_file_path):
         """
@@ -466,8 +468,9 @@ class SequentialKittiLoader(Dataset):
                 self.oxts_reader.get_magnitude_between_pairs(img_path, source_views_paths)
 
         # e.g., img_path == path_to_dataset_root_dir/2011_09_26/2011_09_26_drive_0048_sync/image_02/data/0000000085.png
+        camera_name = Path(img_path).parents[1].name # image_02
         capture_date = Path(img_path).parents[3].name # 2011_09_26
-        K = self.intrinsics[capture_date]
+        K = self.intrinsics[capture_date][camera_name]
         sample['intrinsics'] = K
 
         sequence_idx = Path(img_path).parents[2].name[17:21]  # 0048
@@ -479,7 +482,8 @@ class SequentialKittiLoader(Dataset):
             # assumes the depth files are stored in the same format as KITTI_raw:
             # depth_root_dir/2011_09_26/2011_09_26_drive_0048_sync/proj_depth/velodyne/image_02/0000000085.npz
             depth_path = Path(self.sparse_depth_root_dir) / capture_date \
-                         / f"{capture_date}_drive_{sequence_idx}_sync" / PROJECTED_VELODYNE_DIR / f"{frame_idx}.npz"
+                         / f"{capture_date}_drive_{sequence_idx}_sync" / PROJECTED_VELODYNE_DIR / camera_name \
+                         / f"{frame_idx}.npz"
 
             depth = self.read_npz_depth(str(depth_path))
             sample['sparse_projected_lidar'] =  depth
@@ -504,10 +508,9 @@ class SequentialKittiLoader(Dataset):
 
 
         if 'val' in self.split_name or 'test' in self.split_name or self.depth_completion:
-            
             if not self.eval_on_sparse:
-
-                path_suffix = f"{capture_date}_drive_{sequence_idx}_sync/{PROJECTED_GROUNDTRUTH_DIR}/{frame_idx}.png"
+                path_suffix = f"{capture_date}_drive_{sequence_idx}_sync/{PROJECTED_GROUNDTRUTH_DIR}/" \
+                              f"{camera_name}/{frame_idx}.png"
     
                 projected_lidar_path = Path(self.gt_depth_root_dir) / 'val' / path_suffix
     
@@ -515,7 +518,6 @@ class SequentialKittiLoader(Dataset):
                     projected_lidar_path = Path(self.gt_depth_root_dir) / 'train' / path_suffix
     
                 projected_lidar = self.read_png_depth(projected_lidar_path, resize=self.full_res_shape)
-
                 sample['projected_lidar'] = projected_lidar
             
             else:
