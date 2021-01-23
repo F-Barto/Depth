@@ -56,7 +56,7 @@ class SequentialKittiLoader(Dataset):
 
     def __init__(self, kitti_root_dir, split_file_path, gt_depth_root_dir=None, sparse_depth_root_dir=None,
                  data_transform=None, data_transform_options=None, source_views_indexes=[-1, 1], load_pose=False,
-                 eval_on_sparse=False, input_channels=3, use_pnp=False):
+                 eval_on_sparse=False, depth_completion=False, input_channels=3, use_pnp=False):
 
         """
         Parameters
@@ -93,6 +93,7 @@ class SequentialKittiLoader(Dataset):
         self.input_channels = {1: 'gray', 3: 'rgb'}[input_channels]
 
         self.use_pnp = use_pnp
+        self.depth_completion = depth_completion
 
         self.data_transform = data_transform
         self.data_transform_options = data_transform_options
@@ -501,7 +502,7 @@ class SequentialKittiLoader(Dataset):
             sample['poses_pnp'] = np.stack(pnp_poses, axis=0)
 
 
-        if 'val' in self.split_name or 'test' in self.split_name:
+        if 'val' in self.split_name or 'test' in self.split_name or self.depth_completion:
             
             if not self.eval_on_sparse:
 
