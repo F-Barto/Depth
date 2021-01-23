@@ -40,12 +40,12 @@ class FullySupervisedModel(BaseModel):
         ################### Networks Definition #####################
 
         # Depth Net
-        self.depth_net = select_depth_net(self.hparams.model.depth_net.name, self.hparams.model.depth_net.options,
+        self.depth_net = select_depth_net(self.hparams.network.depth_net.name, self.hparams.network.depth_net.options,
                                           self.train_dataset.load_sparse_depth)
 
         ################### Checkpoint loading Definition #####################
 
-        tri_checkpoint_path = self.hparams.model.get('tri_checkpoint_path', None)
+        tri_checkpoint_path = self.hparams.network.get('tri_checkpoint_path', None)
         if tri_checkpoint_path is not None:
             load_tri_network(self, tri_checkpoint_path)
 

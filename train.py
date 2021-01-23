@@ -83,8 +83,8 @@ def main(project_config, hparams, resume=False):
         elif hparams.logger == 'wandb':
 
             list_of_tags = [
-                f"{hparams.model.depth_net.name} DepthNet",
-                f"{hparams.model.pose_net.name} PoseNet",
+                f"{hparams.network.depth_net.name} DepthNet",
+                f"{hparams.network.pose_net.name} PoseNet",
                 hparams.optimizer.name,
                 hparams.scheduler.name,
                 {1: 'gray', 3: 'rgb'}[hparams.input_channels],
