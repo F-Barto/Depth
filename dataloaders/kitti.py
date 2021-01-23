@@ -55,7 +55,7 @@ class SequentialKittiLoader(Dataset):
     """
 
     def __init__(self, kitti_root_dir, split_file_path, gt_depth_root_dir=None, sparse_depth_root_dir=None,
-                 data_transform=None, data_transform_options=None, source_views_indexes=[-1, 1], load_pose=False,
+                 data_transform=None, data_transform_options=None, source_views_indexes=None, load_pose=False,
                  eval_on_sparse=False, depth_completion=False, input_channels=3, use_pnp=False):
 
         """
@@ -129,7 +129,7 @@ class SequentialKittiLoader(Dataset):
                               f"yours: {source_views_indexes}"
         assert 0 not in source_views_indexes, src_indexes_err_msg
 
-        self.source_views_requested = len(source_views_indexes) > 0
+        self.source_views_requested = source_views_indexes is not None and len(source_views_indexes) > 0
 
         self.split_name = Path(split_file_path).stem # used in __getitem__
 
