@@ -8,6 +8,7 @@ datasets:
 
     train:
       depth_completion: True
+      gt_depth_root_dir: ${gt_depth_root_dir}
       kitti_root_dir: ${kitti_root_dir}
       split_file_path: ${data_split_dir}/depth_completion_train.txt
       sparse_depth_root_dir: ${sparse_depth_root_dir}

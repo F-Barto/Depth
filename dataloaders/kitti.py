@@ -92,6 +92,9 @@ class SequentialKittiLoader(Dataset):
         self.input_channels = {1: 'gray', 3: 'rgb'}[input_channels]
 
         self.use_pnp = use_pnp
+
+        if depth_completion:
+            assert gt_depth_root_dir is not None
         self.depth_completion = depth_completion
 
         self.data_transform = data_transform
