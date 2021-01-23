@@ -331,7 +331,8 @@ def resize_sample_image_and_intrinsics(sample, shape, image_interpolation=Image.
 
     # Scale source views images
     key = SOURCE_VIEWS
-    sample[key] = [image_transform(source_view) for source_view in sample[key]]
+    if sample.get(key) is not None:
+        sample[key] = [image_transform(source_view) for source_view in sample[key]]
 
 
     # Return resized sample
@@ -424,7 +425,8 @@ def duplicate_sample(sample):
 
     # Duplicate source view images
     key = SOURCE_VIEWS
-    sample[f'{key}_original'] = [k.copy() for k in sample[key]]
+    if sample.get(key) is not None:
+        sample[f'{key}_original'] = [k.copy() for k in sample[key]]
 
     # Duplicate (?) sparse projected lidar image
     key = SPARSE_DEPTH
@@ -466,7 +468,8 @@ def colorjitter_sample(sample, parameters, prob=1.0):
 
         # Jitter source views images
         key = SOURCE_VIEWS
-        sample[key] = [augment_image(source_view) for source_view in sample[key]]
+        if sample.get(key) is not None:
+            sample[key] = [augment_image(source_view) for source_view in sample[key]]
 
     # Return jittered (?) sample
     return sample
