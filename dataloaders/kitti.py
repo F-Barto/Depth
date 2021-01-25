@@ -436,7 +436,11 @@ class SequentialKittiLoader(Dataset):
 
     def read_npz_depth(self, file):
         """Reads a .npz depth map from https://github.com/TRI-ML/packnet-sfm/."""
-        depth = np.load(file)['velodyne_depth'].astype(np.float32)
+        try:
+            depth = np.load(file)['velodyne_depth'].astype(np.float32)
+        except:
+            print(file)
+            raise
         return np.expand_dims(depth, axis=2)
 
     def read_png_depth(self, file, resize=None):
