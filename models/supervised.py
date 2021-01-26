@@ -57,6 +57,8 @@ class FullySupervisedModel(BaseModel):
         if 'regression' in losses_handler:
             self.regression_loss_handler = losses_handler['regression']
 
+        assert self.regression_loss_handler is not None
+
 
     def compute_common_losses_and_metrics(self, batch, disp_preds, progress=0.0, metrics_prefix=''):
         losses = []
