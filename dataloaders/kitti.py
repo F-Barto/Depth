@@ -523,7 +523,8 @@ class SequentialKittiLoader(Dataset):
     
                 if not projected_lidar_path.exists():
                     projected_lidar_path = Path(self.gt_depth_root_dir) / 'train' / path_suffix
-    
+
+                # Somehow there two image size in KITTI, so we systematically resize at biggest one
                 projected_lidar = self.read_png_depth(projected_lidar_path, resize=self.full_res_shape)
                 sample['projected_lidar'] = projected_lidar
             
