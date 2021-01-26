@@ -153,6 +153,7 @@ def main(project_config, hparams, resume=False):
             fast_dev_run=project_config.fast_dev_run,
             profiler=profiler,
             early_stop_callback=False,
+            limit_train_batches=hparams.limit_train_batches
             #amp_level='O1',
             #precision=16,
             **hparams.trainer
