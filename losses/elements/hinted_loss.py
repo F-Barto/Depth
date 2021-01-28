@@ -25,18 +25,19 @@ class HintedLoss(LossBase):
         len_gt_photo = len(gt_photometric_losses[0])
 
         for i in range(self.n):
+            # concat photo loss from pred depth, automask ans gt LiDAR
             all_losses = torch.cat(photometric_losses[i] + gt_photometric_losses[i], dim=1)
 
-            # we keep all
+            # check which depth in which source view produce lower photo loss: estimated, automasked, or LiDAR
             idxs = torch.argmin(all_losses, dim=1, keepdim=True).detach()
 
-            # compute mask for each source views
+            # check for valid depth hint in each source view  (photo loss min for depth from LiDAR)
             depth_hint_mask = []
-            for i in range(len_photo, len_photo+len_gt_photo):
-                depth_hint_mask.append((idxs == 2))
-            depth_hint_mask = torch.cat(depth_hint_mask, dim=1)
+            for j in range(len_photo, len_photo+len_gt_photo):
+                depth_hint_mask.append((idxs == j))
 
             # if, in any source view, depth hint reprojection better than estimated or identity reprojection keep it
+            depth_hint_mask = torch.cat(depth_hint_mask, dim=1)
             depth_hint_mask = depth_hint_mask.any(dim=1, keepdim=True)
 
             depth_hints_masks.append(depth_hint_mask)
