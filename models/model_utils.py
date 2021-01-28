@@ -7,7 +7,7 @@ from networks.legacy.custom.guided_sparse_dilated_depth_net import GuidedSparseD
 from networks.legacy.monodepth_original.depth_res_net import DepthResNet as OriginalDepthResNet
 from networks.legacy.monodepth_original.pose_res_net import PoseResNet as OriginalPoseResNet
 
-
+from networks.nets.depth_nets.selfsup_sparse2dense import DepthCompletionNet
 from networks.nets.depth_nets.mfmp_symmetric import MFMPDepthNet
 from networks.nets.depth_nets.monodepth2 import DepthNetMonodepth2
 from networks.nets.pose_nets.monodepth2 import PoseResNet
@@ -27,7 +27,8 @@ def select_depth_net(depth_net_name, depth_net_options, load_sparse_depth=False)
         'monodepth_original': OriginalDepthResNet,
         'guiding': GuidedDepthResNet,
         'sparse-guiding': GuidedSparseDepthResNet,
-        'nlspn': NLSPNModel
+        'nlspn': NLSPNModel,
+        'selfsup_sparse2dense': DepthCompletionNet
     }
 
     if depth_net_name not in depth_nets:

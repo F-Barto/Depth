@@ -31,6 +31,7 @@ class MultiScaleInvDepthPredictor(MultiScaleBasePredictor):
         super(MultiScaleInvDepthPredictor, self).__init__(scales)
 
         assert len(in_chans) == scales
+        self.n = scales
 
         self.sigmoid = nn.Sigmoid()
 
@@ -38,10 +39,10 @@ class MultiScaleInvDepthPredictor(MultiScaleBasePredictor):
         self.postfix = postfix
 
         self.invdepthconvs = nn.ModuleDict([
-            (f'invdepthconv_{i}', PaddedConv3x3(in_chans[i], 1)) for i in range(scales)
+            (f'invdepthconv_{i}', PaddedConv3x3(in_chans[i], 1)) for i in range(self.n)
         ])
 
-        self.outputs = {i:None for i in range(scales)}
+        self.outputs = {i:None for i in range(self.n)}
 
         self.scale_inv_depth = partial(disp_to_depth, min_depth=min_depth, max_depth=max_depth)
 
@@ -59,10 +60,8 @@ class MultiScaleInvDepthPredictor(MultiScaleBasePredictor):
         return self.scale_inv_depth(self.outputs[i])[0]
 
     def compile_predictions(self):
-        assert sum([v is not None for v in self.outputs.values()]) == self.scales, 'Not all scales have a prediction'
 
-        values = list(self.outputs.values())
-        scaled_values = [self.scale_inv_depth(v)[0] for v in values]
+        scaled_values = [self.get_prediction(i) for i in range(self.n)]
 
         if self.training:
             return {self.prefix+f'inv_depths'+self.postfix: scaled_values}
