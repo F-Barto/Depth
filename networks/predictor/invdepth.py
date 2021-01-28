@@ -19,12 +19,9 @@ class InvDepthPredictor(nn.Module):
 
     def forward(self, x):
         output = self.sigmoid(self.invdepthconv(x))
-        scaled_values = [self.scale_inv_depth(output)[0]]
+        scaled_value = self.scale_inv_depth(output)[0]
 
-        if self.training:
-            return {self.prefix + f'inv_depths' + self.postfix: scaled_values}
-        else:
-            return {self.prefix + f'inv_depths' + self.postfix: self.get_prediction(0)}
+        return {self.prefix + f'inv_depths' + self.postfix: scaled_value}
 
 class MultiScaleInvDepthPredictor(MultiScaleBasePredictor):
     def __init__(self, scales, in_chans, prefix='', postfix='', min_depth=0.1, max_depth=120.0):
