@@ -167,6 +167,14 @@ class DepthCompletionNet(nn.Module):
 
         self.predictor = InvDepthPredictor(128)
 
+    @property
+    def require_lidar_input(self):
+        return True
+
+    @property
+    def require_image_input(self):
+        return True
+
     def forward(self, image_input, lidar_input):
         # first layer
         '''
