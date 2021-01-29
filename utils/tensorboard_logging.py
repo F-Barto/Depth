@@ -4,13 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import itertools
 
-try:
-    import wandb
-    from wandb.wandb_run import Run
-except ImportError:
-    raise ImportError('You want to use `wandb` logger which is not installed yet,' 
-                      ' install it with `pip install wandb`.')
-
 def gridplot(imgs, titles=[], cmaps=[], cols=2, figsize=(12, 12)):
     """
     Plot a list of images in a grid format

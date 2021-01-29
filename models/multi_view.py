@@ -121,20 +121,19 @@ class MultiViewModel(BaseModel):
 
         if self.depth_net.require_lidar_input and self.depth_net.require_image_input:
             output = self.depth_net(image, sparse_depth)
-        elif self.depth_net.require_lidar_input and not self.depth_net.require_image_input:
+        elif self.depth_net.require_lidar_input and (not self.depth_net.require_image_input):
             output = self.depth_net(sparse_depth)
-        if not self.depth_net.require_lidar_input and self.depth_net.require_image_input:
+        if (not self.depth_net.require_lidar_input) and self.depth_net.require_image_input:
             output = self.depth_net(image)
 
         # Handle outputs
 
         keys = ['inv_depths', 'disp', 'coarse_disp', 'cam_disp', 'lidar_disp']
 
-        if output.get('uncertainties', None) is not None:
+        if 'uncertainties' in output:
             keys.append('uncertainties')
 
         for key in keys:
-
             if key not in output:
                 continue
 

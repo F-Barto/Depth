@@ -205,10 +205,12 @@ class MultiViewLossHandler(LossHandler, LossBase):
         if self.hinted_loss_handler is not None:
             depth_hints_loss = self.hinted_loss_handler(photometric_losses, gt_photometric_losses, inv_depths, gt_depths)
             losses.append(depth_hints_loss)
+            self.merge_metrics(self.hinted_loss_handler)
 
         if self.smoothness_loss_handler is not None:
             smoothness_loss = self.smoothness_loss_handler(inv_depths, target_images)
             losses.append(smoothness_loss)
+            self.merge_metrics(self.smoothness_loss_handler)
 
         total_loss = sum(losses)
 
