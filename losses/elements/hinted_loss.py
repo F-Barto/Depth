@@ -36,7 +36,7 @@ class HintedLoss(LossBase):
             for j in range(len_photo, len_photo+len_gt_photo):
                 depth_hint_mask.append((idxs == j))
 
-            # if, in any source view, depth hint reprojection better than estimated or identity reprojection keep it
+            # if, in any source view, depth hint reprojection better than estimated depth reprojection keep it
             depth_hint_mask = torch.cat(depth_hint_mask, dim=1)
             depth_hint_mask = depth_hint_mask.any(dim=1, keepdim=True)
 
