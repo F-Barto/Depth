@@ -14,6 +14,8 @@ from .modulated_deform_conv_func import ModulatedDeformConvFunction
 import torch
 import torch.nn as nn
 
+from utils.depth import depth2inv
+
 
 class NLSPN(nn.Module):
     def __init__(self, ch_g, ch_f, k_g, k_f, conf_prop, preserve_input=False, prop_time=18, affinity='TGASS',
@@ -277,6 +279,8 @@ class NLSPNModel(NetworkBase):
 
         self.prop_layer = NLSPN(num_neighbors, 1, 3, prop_kernel, self.conf_prop, **kwargs)
 
+        self.sigmoid = nn.Sigmoid()
+
 
     @property
     def require_lidar_input(self):
@@ -306,7 +310,7 @@ class NLSPNModel(NetworkBase):
 
     def forward(self, image_input, lidar_input):
         rgb = image_input
-        dep = lidar_input
+        dep = depth2inv(lidar_input)
 
         # Encoding
         fe1_rgb = self.conv1_rgb(rgb)
@@ -345,7 +349,8 @@ class NLSPNModel(NetworkBase):
         y, y_inter, offset, aff, aff_const = self.prop_layer(pred_init, guide, confidence, dep, rgb)
 
         # Remove negative depth
-        y = torch.clamp(y, min=0)
+        #y = torch.clamp(y, min=0)
+        y = self.sigmoid(y)
 
         output = {'inv_depths': y, 'pred_init': pred_init, 'pred_inter': y_inter,
                   'guidance': guide, 'offset': offset, 'aff': aff,
