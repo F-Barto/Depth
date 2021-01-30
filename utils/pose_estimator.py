@@ -91,9 +91,6 @@ def get_pose_pnp(rgb_curr, rgb_near, depth_curr, K):
     # the minimal number of points accepted by solvePnP is 4:
     required_count = pts3d_curr.shape[0] >= 4 and pts2d_near_filtered.shape[0] >= 4
 
-    print('pts3d_curr.shape: ', pts3d_curr.shape)
-    print('pts2d_near_filtered.shape: ', pts2d_near_filtered.shape)
-
     if same_length and required_count:
         # ransac
         ret = cv2.solvePnPRansac(pts3d_curr,
