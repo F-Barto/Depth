@@ -7,12 +7,12 @@ from networks.predictor.utils import create_multiscale_predictor
 from functools import partial
 
 class MultiscalePredictionDecoder(nn.Module):
-    def __init__(self, num_ch_enc, activation_cls, scales=4, predictor='inv_depth', upsample_mode='nearest',
+    def __init__(self, num_ch_enc, activation, scales=4, predictor='inv_depth', upsample_mode='nearest',
                  blur=True, blur_at_end=True):
         super(MultiscalePredictionDecoder, self).__init__()
 
         self.scales = scales
-        self.activation = activation_cls(inplace=True)
+        self.activation = activation
 
         available_upmodes = ['nearest', 'pixelshuffle', 'res-pixelshuffle']
         if upsample_mode not in available_upmodes:
@@ -28,7 +28,7 @@ class MultiscalePredictionDecoder(nn.Module):
             # upconv_0, pre upsampling
             num_ch_in = self.num_ch_enc[-1] if i == self.scales else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[f"upconv_{i}_0"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation_cls)
+            self.convs[f"upconv_{i}_0"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation)
 
             if 'pixelshuffle' in self.upsample_mode:
                 do_blur = blur and (i != 0 or blur_at_end)
@@ -39,7 +39,7 @@ class MultiscalePredictionDecoder(nn.Module):
             if i > 0:
                 num_ch_in += self.num_ch_enc[i - 1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[f"upconv_{i}_1"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation_cls)
+            self.convs[f"upconv_{i}_1"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation)
 
         self.predictor = create_multiscale_predictor(predictor, self.scales, in_chans=self.num_ch_dec[:self.scales])
 
@@ -48,7 +48,8 @@ class MultiscalePredictionDecoder(nn.Module):
     def init_weights(self):
         """Initializes network weights."""
 
-        if isinstance(self.activation, nn.ReLU):
+
+        if self.activation is nn.ReLU:
             initializer = partial(nn.init.kaiming_normal_, mode='fan_out', nonlinearity='relu')
         else:# ELU
             initializer = nn.init.xavier_uniform_
