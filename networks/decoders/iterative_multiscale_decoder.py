@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from networks.common.basic_blocks import PaddedConv3x3Block, nearest_upsample, SubPixelUpsamplingBlock
 from networks.predictor.utils import create_multiscale_predictor
-
+from functools import partial
 
 class MultiscalePredictionDecoder(nn.Module):
     def __init__(self, num_ch_enc, activation, scales=4, predictor='inv_depth', upsample_mode='nearest',
@@ -41,6 +41,22 @@ class MultiscalePredictionDecoder(nn.Module):
             self.convs[f"upconv_{i}_1"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation)
 
         self.predictor = create_multiscale_predictor(predictor, self.scales, in_chans=self.num_ch_dec[:self.scales])
+
+        self.init_weights()
+
+    def init_weights(self):
+        """Initializes network weights."""
+
+        if isinstance(self.activation, nn.ReLU):
+            initializer = partial(nn.init.kaiming_normal_, mode='fan_out', nonlinearity='relu')
+        else:# ELU
+            initializer = nn.init.xavier_uniform_
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                initializer(m.weight)
+                if m.bias is not None:
+                    m.bias.data.zero_()
 
     def forward(self, input_features):
         self.outputs = {}
