@@ -2,7 +2,7 @@ import numpy as np
 
 from networks.common.resnet_base import ResNetBase
 from networks.common.basic_blocks import conv7x7
-
+from utils.depth import depth2inv
 
 class LiDARResNetExtractor(ResNetBase):
 
@@ -15,11 +15,12 @@ class LiDARResNetExtractor(ResNetBase):
     """
 
     def __init__(self, block, layers, activation, zero_init_residual=False, input_channels=3, small=True,
-                 **kwargs):
+                 inv_input_depth=False, **kwargs):
         super().__init__(**kwargs)
 
         self.small = small
         self.num_ch_enc = np.array([64, 64, 128])
+        self.inv_input_depth = inv_input_depth
 
         if not self.small:
             self.num_ch_enc = np.array([64, 64, 128, 256, 512])
@@ -41,6 +42,9 @@ class LiDARResNetExtractor(ResNetBase):
         self.init_weights(zero_init_residual)
 
     def forward(self, x):
+
+        if self.inv_input_depth:
+            x = depth2inv(x)
 
         self.features = []
         x = self.conv1(x)

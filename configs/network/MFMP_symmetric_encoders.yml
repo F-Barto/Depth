@@ -17,6 +17,7 @@ network:
         input_channels: 1
         zero_init_residual: False
         small: False
+        inv_input_depth: True
       decoder_hparams:
         predictor: inv_depth
         upsample_mode: nearest
