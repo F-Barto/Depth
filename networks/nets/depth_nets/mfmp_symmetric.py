@@ -40,10 +40,10 @@ class MFMPDepthNet(NetworkBase):
             fusion_hparams = {}
 
         # keeping the name `encoder` for image encoder so that we can use pre-trained weights from TRI for monodepth2 and packnet
-        self.encoder = select_image_extractor(image_extractor_name, activation=activation_cls,
+        self.encoder = select_image_extractor(image_extractor_name, activation_cls=activation_cls,
                                               **image_extractor_hparams)
 
-        self.lidar_encoder = select_lidar_extractor(lidar_extractor_name, activation=activation_cls,
+        self.lidar_encoder = select_lidar_extractor(lidar_extractor_name, activation_cls=activation_cls,
                                                     **lidar_extractor_hparams)
 
         self.fusion_name = fusion_name
