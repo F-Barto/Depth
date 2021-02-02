@@ -310,7 +310,7 @@ class NLSPNModel(NetworkBase):
 
     def forward(self, image_input, lidar_input):
         rgb = image_input
-        dep = depth2inv(lidar_input)
+        dep = lidar_input
 
         # Encoding
         fe1_rgb = self.conv1_rgb(rgb)
@@ -349,10 +349,9 @@ class NLSPNModel(NetworkBase):
         y, y_inter, offset, aff, aff_const = self.prop_layer(pred_init, guide, confidence, dep, rgb)
 
         # Remove negative depth
-        #y = torch.clamp(y, min=0)
-        y = self.sigmoid(y)
+        y = torch.clamp(y, min=0)
 
-        output = {'inv_depths': y, 'pred_init': pred_init, 'pred_inter': y_inter,
+        output = {'inv_depths': depth2inv(y), 'pred_init': pred_init, 'pred_inter': y_inter,
                   'guidance': guide, 'offset': offset, 'aff': aff,
                   'gamma': aff_const, 'confidence': confidence}
 
