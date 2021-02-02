@@ -28,7 +28,7 @@ class MultiscalePredictionDecoder(nn.Module):
             # upconv_0, pre upsampling
             num_ch_in = self.num_ch_enc[-1] if i == self.scales else self.num_ch_dec[i + 1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[f"upconv_{i}_0"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation)
+            self.convs[f"upconv_{i}_0"] = PaddedConv3x3Block(num_ch_in, num_ch_out, self.activation)
 
             if 'pixelshuffle' in self.upsample_mode:
                 do_blur = blur and (i != 0 or blur_at_end)
@@ -39,7 +39,7 @@ class MultiscalePredictionDecoder(nn.Module):
             if i > 0:
                 num_ch_in += self.num_ch_enc[i - 1]
             num_ch_out = self.num_ch_dec[i]
-            self.convs[f"upconv_{i}_1"] = PaddedConv3x3Block(num_ch_in, num_ch_out, activation)
+            self.convs[f"upconv_{i}_1"] = PaddedConv3x3Block(num_ch_in, num_ch_out, self.activation)
 
         self.predictor = create_multiscale_predictor(predictor, self.scales, in_chans=self.num_ch_dec[:self.scales])
 
@@ -47,8 +47,6 @@ class MultiscalePredictionDecoder(nn.Module):
 
     def init_weights(self):
         """Initializes network weights."""
-
-
         if self.activation is nn.ReLU:
             initializer = partial(nn.init.kaiming_normal_, mode='fan_out', nonlinearity='relu')
         else:# ELU

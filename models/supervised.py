@@ -66,8 +66,10 @@ class FullySupervisedModel(BaseModel):
 
         if self.regression_loss_handler is not None:
             # Calculate and weight supervised loss
-            sup_output = self.regression_loss_handler(disp_preds, batch['projected_lidar'],
-                                                      progress=progress)
+            gt_depth = batch.get('projected_lidar', None)
+            if gt_depth is None:
+                gt_depth = batch['sparse_projected_lidar']
+            sup_output = self.regression_loss_handler(disp_preds, gt_depth, progress=progress)
             losses.append(sup_output['loss'])
             metrics.update({metrics_prefix + k: v for k, v in sup_output['metrics'].items()})
 
